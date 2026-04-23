@@ -4,6 +4,7 @@
 ![GitHub issues](https://img.shields.io/github/issues/MiguelTapia12/Shiny)
 ![GitHub pull requests](https://img.shields.io/github/issues-pr/MiguelTapia12/Shiny)
 ![License](https://img.shields.io/badge/license-MIT-green)
+![R-CMD-check](https://github.com/MiguelTapia12/Shiny/actions/workflows/R-CMD-check.yml/badge.svg)
 
 Este proyecto contiene una aplicación Shiny para análisis y visualización de datos.
 
