@@ -1,14 +1,19 @@
 # Shiny Project
 
-Este proyecto contiene una aplicaci髇 Shiny para an醠isis y visualizaci髇 de datos.
+![GitHub last commit](https://img.shields.io/github/last-commit/MiguelTapia12/Shiny)
+![GitHub issues](https://img.shields.io/github/issues/MiguelTapia12/Shiny)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/MiguelTapia12/Shiny)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## Caracter韘ticas principales
-- Inicializaci髇 estable del entorno.
-- M骴ulos refactorizados: selecci髇, trazabilidad, dashboard, cruzamientos, estado de variedad.
+Este proyecto contiene una aplicaci贸n Shiny para an谩lisis y visualizaci贸n de datos.
+
+## Caracter铆sticas principales
+- Inicializaci贸n estable del entorno.
+- M贸dulos refactorizados: selecci贸n, trazabilidad, dashboard, cruzamientos, estado de variedad.
 - Endurecimiento de consultas SQL.
 - Pruebas de humo incluidas en `tests/`.
 
-## Instalaci髇
+## Instalaci贸n
 1. Clonar el repositorio:
    git clone https://github.com/MiguelTapia12/Shiny.git
 2. Abrir RStudio en la carpeta del proyecto.
@@ -16,11 +21,11 @@ Este proyecto contiene una aplicaci髇 Shiny para an醠isis y visualizaci髇 de dat
    shiny::runApp()
 
 ## Estructura del proyecto
-- R/ ? C骴igo modular de la aplicaci髇.
-- global.R ? Configuraci髇 global y carga de dependencias.
-- tests/ ? Scripts de pruebas de humo y validaci髇.
+- R/ ? C贸digo modular de la aplicaci贸n.
+- global.R ? Configuraci贸n global y carga de dependencias.
+- tests/ ? Scripts de pruebas de humo y validaci贸n.
 
-## Contribuci髇
+## Contribuci贸n
 - Crear ramas desde main (feature/... o fix/...).
 - Abrir Pull Requests contra main.
 - Usar mensajes de commit descriptivos.
