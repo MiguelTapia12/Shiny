@@ -1,0 +1,201 @@
+/* ============================================================
+   CR BREEDING SYSTEM — custom.css
+   Central Romana Corp. — Programa de Mejoramiento
+   ============================================================ */
+
+/* ── CSS VARIABLES (Light mode defaults) ──────────────────── */
+:root {
+  --cr-green:        #0b5c2e;
+  --cr-green-mid:    #15803d;
+  --cr-green-light:  #f0f7f3;
+  --cr-green-border: #d1e8db;
+  --cr-green-hover:  #f0faf4;
+  --cr-text:         #1a2e22;
+  --cr-bg:           #f8faf8;
+  --cr-card-bg:      #ffffff;
+  --cr-card-border:  #e2ede6;
+  --cr-sidebar-bg:   #f0f7f3;
+  --cr-sidebar-info: #e8f5ee;
+  --cr-sidebar-inf-border: #c6e6d4;
+  --cr-thead-bg:     #0b5c2e;
+  --cr-thead-fg:     #ffffff;
+  --cr-row-hover:    #f0faf4;
+  --cr-muted:        #6b7280;
+  --cr-shadow:       rgba(11, 92, 46, 0.07);
+  --cr-shadow-nav:   rgba(0, 0, 0, 0.18);
+  --cr-input-bg:     #ffffff;
+  --cr-input-border: #d1e8db;
+}
+
+/* ── DARK MODE VARIABLES ──────────────────────────────────── */
+body.dark-mode {
+  --cr-green:        #22c55e;
+  --cr-green-mid:    #16a34a;
+  --cr-green-light:  #14532d;
+  --cr-green-border: #166534;
+  --cr-green-hover:  #1a3a2a;
+  --cr-text:         #e2f0e8;
+  --cr-bg:           #0f1a13;
+  --cr-card-bg:      #1a2b1f;
+  --cr-card-border:  #2d4a35;
+  --cr-sidebar-bg:   #152318;
+  --cr-sidebar-info: #1e3525;
+  --cr-sidebar-inf-border: #2a4d33;
+  --cr-thead-bg:     #14532d;
+  --cr-thead-fg:     #d1fae5;
+  --cr-row-hover:    #1e3525;
+  --cr-muted:        #9ca3af;
+  --cr-shadow:       rgba(0, 0, 0, 0.35);
+  --cr-shadow-nav:   rgba(0, 0, 0, 0.5);
+  --cr-input-bg:     #1e2d22;
+  --cr-input-border: #2d4a35;
+
+  background-color: var(--cr-bg) !important;
+  color: var(--cr-text) !important;
+}
+
+/* ── DARK MODE — Bootstrap overrides ─────────────────────── */
+body.dark-mode .modal-content,
+body.dark-mode .dropdown-menu {
+  background-color: var(--cr-card-bg) !important;
+  border-color: var(--cr-card-border) !important;
+  color: var(--cr-text) !important;
+}
+body.dark-mode .dropdown-item { color: var(--cr-text) !important; }
+body.dark-mode .dropdown-item:hover { background-color: var(--cr-green-hover) !important; }
+body.dark-mode .form-control,
+body.dark-mode .form-select,
+body.dark-mode .selectize-input {
+  background-color: var(--cr-input-bg) !important;
+  border-color: var(--cr-input-border) !important;
+  color: var(--cr-text) !important;
+}
+body.dark-mode .selectize-dropdown {
+  background-color: var(--cr-card-bg) !important;
+  color: var(--cr-text) !important;
+}
+body.dark-mode label,
+body.dark-mode .control-label { color: var(--cr-text) !important; }
+body.dark-mode .text-muted { color: var(--cr-muted) !important; }
+body.dark-mode hr { border-color: var(--cr-card-border); }
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer { border-color: var(--cr-card-border); }
+body.dark-mode .dataTables_filter input,
+body.dark-mode .dataTables_length select {
+  background-color: var(--cr-input-bg) !important;
+  color: var(--cr-text) !important;
+  border-color: var(--cr-input-border) !important;
+}
+body.dark-mode .dataTables_info,
+body.dark-mode .dataTables_paginate { color: var(--cr-text) !important; }
+body.dark-mode .page-link {
+  background-color: var(--cr-card-bg) !important;
+  color: var(--cr-text) !important;
+  border-color: var(--cr-card-border) !important;
+}
+
+/* ── NAVBAR ────────────────────────────────────────────────── */
+.navbar {
+  box-shadow: 0 4px 14px var(--cr-shadow-nav);
+  border-bottom: 3px solid #16a34a !important;
+}
+.navbar-nav .nav-link        { font-size: .88rem; font-weight: 500; letter-spacing: .3px; }
+.navbar-nav .dropdown-menu   { border-top: 3px solid var(--cr-green); border-radius: 0 0 8px 8px; }
+.navbar-nav .dropdown-item:hover { background-color: var(--cr-green-hover); color: var(--cr-green); }
+.navbar-nav .dropdown-item.active { background-color: var(--cr-green) !important; }
+
+/* ── SIDEBAR ────────────────────────────────────────────────── */
+.sidebar { background-color: var(--cr-sidebar-bg) !important; border-right: 2px solid var(--cr-green-border) !important; }
+.sidebar .bslib-sidebar-title { color: var(--cr-green); font-weight: 700; }
+.bslib-sidebar-layout > .sidebar { width: clamp(220px, 22vw, 285px) !important; }
+
+/* ── SIDEBAR INFO BOX ───────────────────────────────────────── */
+.cr-info-box {
+  font-size: .82rem;
+  background: var(--cr-sidebar-info);
+  border: 1px solid var(--cr-sidebar-inf-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+/* ── DARK MODE TOGGLE BUTTON ────────────────────────────────── */
+.dark-toggle-btn {
+  width: 100%;
+  margin-bottom: 8px;
+  background: transparent !important;
+  border: 1px solid var(--cr-green-border) !important;
+  color: var(--cr-text) !important;
+  font-size: .82rem;
+  font-weight: 500;
+  border-radius: 7px;
+  transition: all .2s;
+}
+.dark-toggle-btn:hover { background-color: var(--cr-green-hover) !important; }
+
+/* ── CARDS ──────────────────────────────────────────────────── */
+.card {
+  background-color: var(--cr-card-bg) !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--cr-card-border) !important;
+  box-shadow: 0 2px 8px var(--cr-shadow) !important;
+  margin-bottom: 18px;
+}
+.card-header {
+  background-color: var(--cr-card-bg) !important;
+  color: var(--cr-green);
+  font-weight: 700;
+  border-bottom: 2px solid var(--cr-green-light) !important;
+  padding-top: 14px;
+  border-radius: 10px 10px 0 0 !important;
+}
+
+/* ── BOTONES ─────────────────────────────────────────────────── */
+.btn { border-radius: 7px; font-weight: 600; letter-spacing: .4px; font-size: .84rem; }
+.btn-success        { background-color: #0b5c2e !important; border: none !important; box-shadow: 0 2px 6px rgba(11,92,46,.3); }
+.btn-success:hover  { background-color: #15803d !important; transform: translateY(-1px); transition: all .18s; }
+.btn-primary        { background-color: #0369a1 !important; border: none !important; }
+.btn-info           { background-color: #0284c7 !important; border: none !important; }
+
+/* ── VALUE BOXES ─────────────────────────────────────────────── */
+.bslib-value-box { box-shadow: 0 4px 12px var(--cr-shadow) !important; border: none !important; border-radius: 10px !important; }
+
+/* ── TABLAS DT ───────────────────────────────────────────────── */
+.dataTables_wrapper { overflow-x: auto !important; }
+table.dataTable      { min-width: 480px; font-size: .87rem; }
+table.dataTable thead th {
+  background-color: var(--cr-thead-bg) !important;
+  color:            var(--cr-thead-fg) !important;
+  font-weight: 600 !important;
+  letter-spacing: .3px;
+}
+table.dataTable tbody tr:hover { background-color: var(--cr-row-hover) !important; }
+body.dark-mode table.dataTable tbody td { background-color: var(--cr-card-bg); color: var(--cr-text); }
+body.dark-mode table.dataTable tbody tr.odd td  { background-color: #1e2d22 !important; }
+body.dark-mode table.dataTable tbody tr.even td { background-color: var(--cr-card-bg) !important; }
+
+/* ── NAVSET PILLS (tabs internos) ────────────────────────────── */
+.nav-pills .nav-link.active { background-color: var(--cr-green) !important; color: #fff !important; font-weight: 600; }
+.nav-tabs  .nav-link.active { font-weight: 700; color: var(--cr-green) !important; border-bottom: 3px solid var(--cr-green); background: transparent !important; }
+
+/* ── RESPONSIVE TABLET (<992px) ──────────────────────────────── */
+@media (max-width: 991.98px) {
+  .bslib-sidebar-layout > .sidebar { width: 255px !important; }
+  .bslib-grid { grid-template-columns: 1fr !important; }
+  .modal-dialog { margin: .5rem auto; max-width: 96vw !important; }
+  .navbar-brand  { font-size: .9rem; }
+  .nav-link      { font-size: .8rem; padding: .4rem .55rem !important; }
+}
+
+/* ── RESPONSIVE MÓVIL (<768px) ───────────────────────────────── */
+@media (max-width: 767.98px) {
+  .bslib-sidebar-layout > .sidebar { width: 100% !important; position: relative !important; }
+  .card                             { margin-left: 0 !important; margin-right: 0 !important; }
+  .bslib-value-box                  { min-width: 100% !important; }
+  .js-plotly-plot                   { max-height: 300px !important; }
+}
+
+/* ── PANTALLAS GRANDES (>1400px) ─────────────────────────────── */
+@media (min-width: 1400px) {
+  .bslib-sidebar-layout > .sidebar { width: 310px !important; }
+  .modal-lg { max-width: 1000px; }
+}

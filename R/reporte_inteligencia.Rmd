@@ -1,0 +1,588 @@
+---
+title: "Reporte de Inteligencia Analítica"
+output:
+  pdf_document:
+    toc: false
+    df_print: kable
+    keep_tex: false
+    latex_engine: pdflatex
+fontsize: 10.5pt
+geometry: "top=2cm, bottom=2.2cm, left=2.4cm, right=2.4cm"
+header-includes:
+  - \usepackage{xcolor}
+  - \usepackage{fancyhdr}
+  - \usepackage{titlesec}
+  - \usepackage{colortbl}
+  - \usepackage{booktabs}
+  - \usepackage{array}
+  - \usepackage{calc}
+  - \usepackage{graphicx}
+  - \usepackage{framed}
+  - \usepackage{mdframed}
+  - \usepackage{tcolorbox}
+  - \usepackage{tabularx}
+  - \usepackage{microtype}
+  - \usepackage{setspace}
+  - \usepackage{enumitem}
+  - \usepackage{multicol}
+  - \usepackage{eso-pic}
+  - \usepackage{pifont}
+  - \tcbuselibrary{skins,breakable}
+  - \definecolor{crgreen}{HTML}{0B5C2E}
+  - \definecolor{crgreen2}{HTML}{15803D}
+  - \definecolor{crgreen3}{HTML}{22C55E}
+  - \definecolor{crgreenlight}{HTML}{E8F5EC}
+  - \definecolor{crgreenxlight}{HTML}{F0FDF4}
+  - \definecolor{crgray}{HTML}{4B5563}
+  - \definecolor{crgraylight}{HTML}{F3F4F6}
+  - \definecolor{crgrayxlight}{HTML}{F9FAFB}
+  - \definecolor{cramber}{HTML}{B45309}
+  - \definecolor{cramberlight}{HTML}{FFFBEB}
+  - \definecolor{crblue}{HTML}{1D4ED8}
+  - \definecolor{crbluelight}{HTML}{EFF6FF}
+  - \definecolor{crred}{HTML}{B91C1C}
+  - \definecolor{crredlight}{HTML}{FEF2F2}
+  - \definecolor{craccent}{HTML}{065F46}
+  - \definecolor{shadecolor}{HTML}{EAF7EE}
+  - \definecolor{sidebar}{HTML}{0B5C2E}
+  - \renewcommand{\maketitle}{}
+  - \setlength{\headheight}{16pt}
+  - \pagestyle{fancy}
+  - \fancyhf{}
+  - \renewcommand{\headrulewidth}{0pt}
+  - \renewcommand{\footrulewidth}{0pt}
+  - \fancyhead[L]{\colorbox{crgreen}{\parbox[c][10pt][c]{5pt}{\hspace{5pt}}}\hspace{4pt}\small\color{crgray}\textbf{CR Breeding}\enspace\textcolor{crgreen3}{|}\enspace Inteligencia Analítica}
+  - \fancyhead[R]{\small\color{crgray}\reportdate}
+  - \fancyfoot[L]{\footnotesize\color{crgray}\textit{Confidencial — Uso interno}}
+  - \fancyfoot[R]{\footnotesize\color{crgray}Página \thepage}
+  - \titleformat{\section}{\large\bfseries\color{crgreen}}{}{0em}{}[\vspace{-2pt}\color{crgreen2}\rule{\textwidth}{1.4pt}\vspace{2pt}]
+  - \titleformat{\subsection}{\normalsize\bfseries\color{crgreen2}}{}{0em}{}
+  - \titlespacing*{\section}{0pt}{1.6em}{0.7em}
+  - \titlespacing*{\subsection}{0pt}{1em}{0.4em}
+  - \setlength{\parskip}{0.5em}
+  - \setlength{\parindent}{0pt}
+  - \let\oldsnugshade\snugshade
+  - \let\endoldsnugshade\endsnugshade
+  - \renewenvironment{snugshade}{\oldsnugshade\small\color{crgray}}{\endoldsnugshade}
+params:
+  rasgo: NA
+  variedades: NA
+  suelos: NA
+  df_plot: NA
+  interpretacion: NA
+  dat_tabla: NA
+  usar_relativo: FALSE
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      fig.width = 9.2, fig.height = 5.0, dpi = 180)
+library(ggplot2)
+library(knitr)
+library(dplyr)
+options(knitr.table.format = "latex")
+
+tex_escape <- function(x) {
+  if (is.null(x) || all(is.na(x))) return("")
+  x <- as.character(x)
+  x <- gsub("\\\\", "\\\\textbackslash{}", x)
+  x <- gsub("([_%#&$\\{\\}])", "\\\\\\1", x)
+  x
+}
+
+meses_es <- c("enero","febrero","marzo","abril","mayo","junio",
+              "julio","agosto","septiembre","octubre","noviembre","diciembre")
+fecha_header <- sprintf("%d de %s de %d",
+  as.integer(format(Sys.Date(), "%d")),
+  meses_es[as.integer(format(Sys.Date(), "%m"))],
+  as.integer(format(Sys.Date(), "%Y")))
+
+format_prom <- function(prom, prom_abs = NULL, rasgo = "") {
+  if (isTRUE(params$usar_relativo) && !is.null(prom_abs) && !is.na(prom_abs)) {
+    return(sprintf("**%s%%** (%.2f %s)", prom, prom_abs, rasgo))
+  } else if (isTRUE(params$usar_relativo)) {
+    return(sprintf("**%s%%**", prom))
+  } else {
+    return(sprintf("**%s**", prom))
+  }
+}
+
+get_abs <- function(df_row) {
+  if ("Promedio_Absoluto" %in% names(df_row) && nrow(df_row) > 0 && !is.na(df_row$Promedio_Absoluto[1]))
+    df_row$Promedio_Absoluto[1]
+  else NULL
+}
+```
+
+```{r portada-cmd, results='asis'}
+cat(sprintf("\\newcommand{\\reportdate}{%s}\n", fecha_header))
+```
+
+```{r portada, results='asis'}
+rasgo_txt  <- tex_escape(if (!is.null(params$rasgo)) params$rasgo else "N/D")
+suelos_txt <- tex_escape(if (!is.null(params$suelos)) paste(params$suelos, collapse = ", ") else "N/D")
+vars_txt   <- tex_escape(if (!is.null(params$variedades)) paste(params$variedades, collapse = ", ") else "N/D")
+
+n_cand <- if (!is.null(params$variedades)) length(params$variedades) else 0
+n_test <- if (!is.null(params$df_plot) && is.data.frame(params$df_plot) && "ind_testigo" %in% names(params$df_plot)) {
+  length(unique(params$df_plot$variedad[params$df_plot$ind_testigo == "S"]))
+} else 0
+
+n_cortes <- if (!is.null(params$dat_tabla) && is.data.frame(params$dat_tabla) && "Cortes" %in% names(params$dat_tabla)) {
+  max(as.integer(params$dat_tabla$Cortes), na.rm = TRUE)
+} else "N/D"
+
+fecha_txt <- format(Sys.Date(), "%d/%m/%Y")
+
+cat(sprintf("
+\\begin{titlepage}
+\\thispagestyle{empty}
+
+%% ─── BARRA LATERAL VERDE ──────────────────────────────────────────────────────
+\\AddToShipoutPictureBG*{%%
+  \\AtPageLowerLeft{%%
+    \\textcolor{crgreen}{\\rule{1.2cm}{\\paperheight}}%%
+  }%%
+}
+
+%% ─── CABECERA ────────────────────────────────────────────────────────────────
+\\vspace*{0.6cm}
+\\hspace{1.8cm}%%
+\\begin{minipage}{\\dimexpr\\textwidth-0.2cm}
+  {\\fontsize{11}{13}\\selectfont\\color{crgray}\\textbf{CENTRAL ROMANA CORP.}}\\\\[2pt]
+  {\\fontsize{9}{11}\\selectfont\\color{crgray} Programa de Mejoramiento Gen\\'etico de Ca\\~na de Az\\'ucar}
+\\end{minipage}
+
+\\vspace{0.5cm}
+\\hspace{1.8cm}\\textcolor{crgreen2}{\\rule{\\dimexpr\\textwidth-0.2cm}{1.2pt}}
+\\vspace{1.8cm}
+
+%% ─── TÍTULO ──────────────────────────────────────────────────────────────────
+\\hspace{1.8cm}%%
+\\begin{minipage}{\\dimexpr\\textwidth-0.2cm}
+  {\\fontsize{9}{11}\\selectfont\\color{cramber}\\textbf{\\MakeUppercase{INTELIGENCIA ANAL\\'ITICA}}}\\\\[10pt]
+  {\\fontsize{28}{34}\\selectfont\\bfseries\\color{crgreen} Reporte de\\\\Estabilidad Gen\\'etica}\\\\[10pt]
+  {\\fontsize{13}{16}\\selectfont\\color{crgray} An\\'alisis GxE · Normas de Reacci\\'on · Evaluaci\\'on de Candidatas}
+\\end{minipage}
+
+\\vspace{1.8cm}
+
+%% ─── PILL VARIEDADES ─────────────────────────────────────────────────────────
+\\hspace{1.8cm}%%
+\\begin{minipage}{\\dimexpr\\textwidth-0.2cm}
+  \\colorbox{crgreenxlight}{%%
+    \\parbox{\\dimexpr\\textwidth-0.2cm-6pt}{%%
+      \\vspace{5pt}%%
+      \\hspace{4pt}{\\small\\color{crgray}\\textbf{VARIEDADES EVALUADAS}\\quad}%%
+      {\\small\\color{craccent}\\textit{%s}}%%
+      \\vspace{5pt}%%
+    }%%
+  }
+\\end{minipage}
+
+\\vspace{1.4cm}
+
+%% ─── CIFRAS CLAVE (4 KPIs) ───────────────────────────────────────────────────
+\\hspace{1.8cm}%%
+\\begin{minipage}{\\dimexpr\\textwidth-0.2cm}
+  \\begin{tabular}{p{3.2cm}p{3.2cm}p{3.2cm}p{3.2cm}}
+    %%
+    \\colorbox{crgreenlight}{\\parbox[c][2.0cm][c]{3.0cm}{\\centering
+      {\\color{crgray}\\tiny\\textbf{RASGO PRINCIPAL}}\\\\[5pt]
+      {\\color{crgreen}\\large\\textbf{%s}}
+    }} &
+    \\colorbox{crgreenlight}{\\parbox[c][2.0cm][c]{3.0cm}{\\centering
+      {\\color{crgray}\\tiny\\textbf{SUELOS}}\\\\[5pt]
+      {\\color{crgreen}\\large\\textbf{%s}}
+    }} &
+    \\colorbox{crgreenxlight}{\\parbox[c][2.0cm][c]{3.0cm}{\\centering
+      {\\color{crgray}\\tiny\\textbf{CANDIDATAS}}\\\\[5pt]
+      {\\color{crgreen}\\fontsize{22}{24}\\selectfont\\textbf{%d}}
+    }} &
+    \\colorbox{crbluelight}{\\parbox[c][2.0cm][c]{3.0cm}{\\centering
+      {\\color{crgray}\\tiny\\textbf{TESTIGOS}}\\\\[5pt]
+      {\\color{crblue}\\fontsize{22}{24}\\selectfont\\textbf{%d}}
+    }} \\\\
+  \\end{tabular}
+\\end{minipage}
+
+\\vfill
+
+%% ─── FOOTER ──────────────────────────────────────────────────────────────────
+\\hspace{1.8cm}\\textcolor{crgreen2}{\\rule{\\dimexpr\\textwidth-0.2cm}{0.6pt}}
+\\\\[6pt]
+\\hspace{1.8cm}%%
+\\begin{minipage}{\\dimexpr\\textwidth-0.2cm}
+  \\begin{tabular}{p{8cm} r}
+    {\\small\\color{crgray} Generado por el M\\'odulo de Inteligencia Anal\\'itica} &
+    {\\small\\color{crgray}\\textbf{%s}} \\\\
+  \\end{tabular}
+\\end{minipage}
+\\end{titlepage}
+",
+vars_txt, rasgo_txt, suelos_txt, n_cand, n_test, fecha_txt))
+```
+
+# Resumen Ejecutivo
+
+```{r resumen-ejecutivo, results='asis'}
+df_r <- params$dat_tabla
+lider_txt <- ""
+if (!is.null(df_r) && is.data.frame(df_r) && nrow(df_r) > 0 && "Promedio" %in% names(df_r)) {
+  top <- df_r %>% arrange(desc(Promedio)) %>% slice(1)
+  if (nrow(top) > 0) {
+    lider_txt <- sprintf(" El análisis identifica a **%s** como el material de mayor rendimiento en el grupo evaluado.", top$Variedad[1])
+  }
+}
+
+metodo_txt <- if (isTRUE(params$usar_relativo)) {
+  "Los resultados se expresan como **porcentaje relativo** frente al promedio del panel de testigos en cada ambiente y corte — metodología que permite comparar el desempeño de cada material en una escala común, independiente de las condiciones particulares de cada experimento."
+} else {
+  "Los resultados se presentan en la escala original de medición, permitiendo comparaciones directas entre materiales dentro de cada ambiente."
+}
+
+n_obs_txt <- if (!is.null(params$dat_tabla) && is.data.frame(params$dat_tabla) && "Cortes" %in% names(params$dat_tabla)) {
+  max_c <- max(as.integer(params$dat_tabla$Cortes), na.rm = TRUE)
+  sprintf(" La evaluación abarca hasta **%d cortes** por variedad (plantilla + retoños sucesivos), proporcionando una visión longitudinal del comportamiento agronómico.", max_c)
+} else ""
+
+cat(sprintf(
+"Este documento sintetiza el análisis de estabilidad genética y agronómica de **%d variedades candidatas** frente a **%d testigos de control** del programa, evaluando **%s** en condiciones de suelo **%s**.%s%s\n\n%s",
+n_cand, n_test,
+if(!is.null(params$rasgo)) params$rasgo else "N/D",
+if(!is.null(params$suelos)) paste(params$suelos, collapse=", ") else "N/D",
+lider_txt, n_obs_txt, metodo_txt))
+```
+
+# Perfil Comparativo de Estabilidad
+
+Las normas de reacción muestran el comportamiento de cada variedad a lo largo del ciclo de producción. Una trayectoria **alta y horizontal** indica estabilidad superior; un **declive marcado** señala pérdida de vigor en retoños.
+
+```{r plot-estabilidad, fig.width=9.4, fig.height=5.4, fig.align='center', out.width="100%"}
+df_all <- params$df_plot
+vars   <- params$variedades
+textos <- params$interpretacion
+
+if (!is.null(df_all) && is.data.frame(df_all) && nrow(df_all) > 0) {
+
+  titulo_y <- if (isTRUE(params$usar_relativo)) paste("% Relativo de", params$rasgo) else params$rasgo
+
+  n_vars <- length(unique(df_all$variedad))
+  paleta_base <- c("#0B5C2E","#E69F00","#56B4E9","#D55E00",
+                   "#CC79A7","#0072B2","#009E73","#332288",
+                   "#AA4499","#44AA99","#b45309","#6B7280")
+  paleta <- if (n_vars <= length(paleta_base)) paleta_base[1:n_vars] else
+    grDevices::colorRampPalette(paleta_base)(n_vars)
+
+  g <- ggplot(df_all, aes(x = corte_nombre, y = valor_medio,
+                          group = variedad, color = variedad)) +
+    geom_line(aes(alpha = ind_testigo, linewidth = ind_testigo,
+                  linetype = ind_testigo)) +
+    geom_point(aes(shape = ind_testigo, size = ind_testigo), alpha = 0.92) +
+    scale_alpha_manual(values   = c("S" = 0.42, "N" = 0.97), guide = "none") +
+    scale_linewidth_manual(values = c("S" = 0.65, "N" = 1.10), guide = "none") +
+    scale_size_manual(values    = c("S" = 2.0,  "N" = 2.6),  guide = "none") +
+    scale_shape_manual(values   = c("S" = 17,   "N" = 16),   guide = "none") +
+    scale_linetype_manual(values = c("S" = "dashed","N" = "solid"), guide = "none") +
+    scale_color_manual(values = paleta) +
+    facet_wrap(~suelo, scales = "free_x") +
+    labs(x = NULL, y = titulo_y, color = NULL) +
+    theme_minimal(base_size = 11, base_family = "sans") +
+    theme(
+      axis.text.x      = element_text(angle = 38, hjust = 1, size = 8.5, color = "#374151"),
+      axis.text.y      = element_text(size = 8.5, color = "#374151"),
+      axis.title.y     = element_text(face = "bold", size = 9.5, color = "#1f2937",
+                                      margin = margin(r = 8)),
+      panel.spacing    = unit(1.8, "lines"),
+      strip.text       = element_text(face = "bold", size = 11, color = "white",
+                                      margin = margin(t = 6, b = 6)),
+      strip.background = element_rect(fill = "#0B5C2E", color = NA),
+      legend.position  = "bottom",
+      legend.title     = element_blank(),
+      legend.text      = element_text(size = 8, color = "#374151"),
+      legend.key.width = unit(1.4, "cm"),
+      legend.key.size  = unit(0.5, "cm"),
+      legend.spacing.x = unit(0.3, "cm"),
+      panel.grid.major = element_line(color = "#F0F0F0", linewidth = 0.35),
+      panel.grid.minor = element_blank(),
+      panel.background = element_rect(fill = "#FAFAFA", color = NA),
+      panel.border     = element_rect(colour = "#E5E7EB", fill = NA, linewidth = 0.6),
+      plot.background  = element_rect(fill = "white", color = NA),
+      plot.margin      = margin(t = 4, r = 4, b = 4, l = 4)
+    ) +
+    guides(color = guide_legend(nrow = 2, byrow = TRUE,
+                                override.aes = list(linewidth = 1, size = 2.2)))
+
+  if (isTRUE(params$usar_relativo)) {
+    g <- g +
+      geom_hline(yintercept = 100, linetype = "longdash",
+                 color = "#9CA3AF", linewidth = 0.45) +
+      annotate("text", x = Inf, y = 101.8, label = "ref. 100%",
+               size = 2.4, color = "#9CA3AF", hjust = 1.05, fontface = "italic")
+  }
+
+  print(g)
+} else {
+  cat("\\textcolor{crgray}{\\textit{No hay datos suficientes para construir el perfil comparativo.}}\n")
+}
+```
+
+\footnotesize\textcolor{crgray}{$\circ$ \textbf{Candidata} (línea sólida) \quad $\triangle$ \textbf{Testigo de control} (línea discontinua, atenuada)}
+\normalsize
+
+# Hallazgos y Recomendaciones
+
+```{r hallazgos, results='asis'}
+df_res <- params$dat_tabla
+if (!is.null(df_res) && is.data.frame(df_res) && nrow(df_res) > 0 && "Tipo" %in% names(df_res)) {
+
+  suelos_unicos <- unique(df_res$Suelo)
+
+  for (s in suelos_unicos) {
+
+    if (length(suelos_unicos) > 1) cat(sprintf("## Ambiente: %s\n\n", s))
+
+    df_s <- df_res %>% filter(Suelo == s) %>% arrange(desc(Promedio))
+    if (nrow(df_s) == 0) { cat("_Sin datos._\n\n"); next }
+
+    testigos_s  <- df_s %>% filter(Tipo == "Testigo")  %>% arrange(desc(Promedio))
+    cands_s     <- df_s %>% filter(Tipo == "Candidata") %>% arrange(desc(Promedio))
+    n_t <- nrow(testigos_s); n_c <- nrow(cands_s)
+
+    # ── Función para construir cada párrafo ─────────────────────────────────
+    build_parrafo <- function(var_row, rank_label, is_testigo = FALSE) {
+      v     <- var_row$Variedad[1]
+      cortes <- var_row$Cortes[1]
+      prom  <- var_row$Promedio[1]
+      pabs  <- get_abs(var_row)
+      tipo_str <- if (is_testigo) "comercial" else "pre-comercial"
+
+      prom_fmt <- format_prom(prom, pabs, if(!is.null(params$rasgo)) params$rasgo else "")
+
+      # Contexto vs testigos
+      if (!is_testigo && n_t > 0) {
+        sup <- testigos_s %>% filter(Promedio <= prom) %>% pull(Variedad)
+        inf <- testigos_s %>% filter(Promedio >  prom) %>% pull(Variedad)
+        comp <- ""
+        if (length(sup) > 0 && length(inf) > 0) {
+          comp <- sprintf(", situándose por encima de **%s** y por debajo de **%s**",
+                          paste(sup, collapse=", "), paste(inf, collapse=", "))
+        } else if (length(sup) > 0) {
+          comp <- sprintf(", superando a los testigos comerciales **%s**", paste(sup, collapse=", "))
+        } else if (length(inf) > 0) {
+          comp <- sprintf(", aún por debajo de los testigos **%s**", paste(inf, collapse=", "))
+        }
+        sust <- if (length(sup) > 0) sprintf(" Su desempeño la posiciona como candidata para sustituir a **%s**.", paste(sup, collapse=" y ")) else ""
+        txt <- sprintf("%s La variedad %s **%s** registra un promedio de %s a través de **%s cortes**%s.%s",
+                       rank_label, tipo_str, v, prom_fmt, cortes, comp, sust)
+      } else if (is_testigo) {
+        txt <- sprintf("%s La variedad %s **%s** registra %s a través de **%s cortes**, constituyendo la referencia del programa en este ambiente.",
+                       rank_label, tipo_str, v, prom_fmt, cortes)
+      } else {
+        txt <- sprintf("%s La variedad %s **%s** registra un promedio de %s a través de **%s cortes**.",
+                       rank_label, tipo_str, v, prom_fmt, cortes)
+      }
+      txt
+    }
+
+    # ── Construcción de párrafos ─────────────────────────────────────────────
+    parrafos <- character(0)
+
+    # TIER 1 — Líder absoluto del ambiente
+    top1    <- df_s[1,]
+    es_test1 <- top1$Tipo == "Testigo"
+    p1 <- build_parrafo(top1, "\\textbf{\\textcolor{crgreen}{\\#1}}", es_test1)
+    if (!es_test1 && n_t > 0 && "Promedio_Absoluto" %in% names(df_s)) {
+      pm_com <- mean(testigos_s$Promedio_Absoluto, na.rm = TRUE)
+      margen <- top1$Promedio_Absoluto - pm_com
+      if (!is.na(margen)) {
+        if (margen > 0)
+          p1 <- paste0(p1, sprintf(" Supera al promedio comercial por un margen real de **+%.2f %s**.", margen, params$rasgo))
+        else
+          p1 <- paste0(p1, sprintf(" Aunque lidera el grupo de candidatas, se mantiene **%.2f %s por debajo** del promedio comercial.", abs(margen), params$rasgo))
+      }
+    }
+    parrafos <- c(parrafos, p1)
+
+    # TIER 2 — Segunda candidata
+    cand_resto <- cands_s %>% filter(Variedad != top1$Variedad)
+    if (nrow(cand_resto) >= 1) {
+      p2 <- build_parrafo(cand_resto[1,], "\\textbf{\\textcolor{crgreen2}{\\#2}}", FALSE)
+      parrafos <- c(parrafos, p2)
+    } else if (n_c == 0 && n_t >= 2) {
+      dif <- testigos_s$Promedio[1] - testigos_s$Promedio[2]
+      p2 <- sprintf("El segundo testigo en desempeño es **%s** con %s, a **%.1f puntos** del líder.",
+                    testigos_s$Variedad[2],
+                    format_prom(testigos_s$Promedio[2], get_abs(testigos_s[2,]), if(!is.null(params$rasgo)) params$rasgo else ""),
+                    dif)
+      parrafos <- c(parrafos, p2)
+    }
+
+    # TIER 3 — Resto del grupo (compacto)
+    inicio3 <- if (es_test1 || top1$Tipo == "Candidata") 2 else 1
+    if (nrow(cand_resto) >= inicio3 + 1) {
+      tier3 <- cand_resto[seq(inicio3 + 1, min(nrow(cand_resto), inicio3 + 3)), ] %>% filter(!is.na(Promedio))
+      if (nrow(tier3) > 0) {
+        noms3 <- paste(tier3$Variedad, collapse=", ")
+        proms3 <- paste(sapply(1:nrow(tier3), function(i)
+          paste0(tier3$Variedad[i], " (", format_prom(tier3$Promedio[i], get_abs(tier3[i,]), ""), ")")), collapse="; ")
+        sup3 <- testigos_s %>% filter(Promedio <= mean(tier3$Promedio, na.rm=TRUE)) %>% pull(Variedad)
+        sust3 <- if (length(sup3) > 0) sprintf(", con potencial de sustitución de **%s**", paste(sup3, collapse=", ")) else ""
+        p3 <- sprintf("En el grupo de seguimiento se encuentran **%s** —— %s%s.",
+                      noms3, proms3, sust3)
+        parrafos <- c(parrafos, p3)
+      }
+    }
+
+    # TIER 4 — Candidatas rezagadas
+    inicio4 <- inicio3 + 4
+    if (nrow(cand_resto) >= inicio4) {
+      tier4 <- cand_resto[inicio4:nrow(cand_resto), ] %>% filter(!is.na(Promedio))
+      if (nrow(tier4) > 0) {
+        sup4  <- testigos_s %>% filter(Promedio > max(tier4$Promedio)) %>% pull(Variedad)
+        comp4 <- if (length(sup4) > 0) sprintf(", por debajo de los testigos **%s**", paste(sup4, collapse=", ")) else ""
+        p4 <- sprintf("Las candidatas **%s** registran promedios entre **%s%%** y **%s%%**%s.",
+                      paste(tier4$Variedad, collapse=", "),
+                      min(tier4$Promedio), max(tier4$Promedio), comp4)
+        parrafos <- c(parrafos, p4)
+      }
+    }
+
+    if (n_c == 0) {
+      parrafos <- c(parrafos, "_No se incluyeron variedades candidatas en esta selección. El análisis se limita a los testigos de control._")
+    }
+
+    parrafos <- parrafos[!is.na(parrafos) & nchar(trimws(parrafos)) > 0]
+    cat(paste(parrafos, collapse="\n\n"), "\n\n")
+  }
+
+} else {
+  cat("\\textcolor{crgray}{\\textit{No hay datos suficientes para generar hallazgos.}}\n")
+}
+```
+
+\newpage
+
+# Síntesis Individual por Variedad
+
+Evaluación detallada de cada variedad candidata generada por el módulo de Inteligencia Analítica, con contexto de tendencia longitudinal y posición relativa frente al panel de testigos.
+
+```{r sintesis-individual, results='asis'}
+df_all <- params$df_plot
+if (!is.null(df_all) && is.data.frame(df_all) && nrow(df_all) > 0 &&
+    !is.null(textos) && length(textos) > 0 && !is.null(vars)) {
+
+  find_text <- function(v, txts) {
+    idx <- grep(paste0("La variedad ", v, " "), txts, fixed = TRUE)
+    if (length(idx) > 0) txts[idx[1]] else NULL
+  }
+
+  any_txt <- FALSE
+  for (v in vars) {
+    txt <- find_text(v, textos)
+    if (!is.null(txt)) {
+      any_txt <- TRUE
+      var_row <- if (!is.null(params$dat_tabla) && is.data.frame(params$dat_tabla)) {
+        params$dat_tabla %>% filter(Variedad == v) %>% slice(1)
+      } else NULL
+
+      # Badge de tipo (Testigo / Candidata)
+      tipo_badge <- ""
+      if (!is.null(var_row) && nrow(var_row) > 0 && "Tipo" %in% names(var_row)) {
+        if (var_row$Tipo[1] == "Testigo") {
+          tipo_badge <- "\\colorbox{crbluelight}{\\textcolor{crblue}{\\tiny\\textbf{TESTIGO}}}"
+        } else {
+          tipo_badge <- "\\colorbox{crgreenxlight}{\\textcolor{crgreen}{\\tiny\\textbf{CANDIDATA}}}"
+        }
+      }
+
+      prom_badge <- ""
+      if (!is.null(var_row) && nrow(var_row) > 0 && "Promedio" %in% names(var_row)) {
+        prom_val <- var_row$Promedio[1]
+        unidad   <- if (isTRUE(params$usar_relativo)) "\\%" else ""
+        color_p  <- if (!is.na(prom_val) && as.numeric(prom_val) >= 100) "crgreen" else "crgray"
+        prom_badge <- sprintf("\\colorbox{crgreenxlight}{\\textcolor{%s}{\\small\\textbf{%s%s}}}", color_p, prom_val, unidad)
+      }
+
+      cat(sprintf("\\vspace{0.5em}\n\\noindent\n\\begin{tcolorbox}[enhanced,breakable,\n  colback=white,colframe=crgreen2,\n  leftrule=4pt,toprule=0.4pt,bottomrule=0.4pt,rightrule=0.4pt,\n  arc=2pt,boxsep=3pt,left=8pt,right=8pt,top=6pt,bottom=6pt]\n{\\normalsize\\bfseries\\color{crgreen} %s}\\quad %s\\quad %s\n\n\\vspace{4pt}\\small\\color{crgray}\n", v, tipo_badge, prom_badge))
+
+      # Imprimir texto de la síntesis directamente
+      cat(txt, "\n")
+      cat("\\end{tcolorbox}\n\n")
+    }
+  }
+  if (!any_txt) cat("\\textcolor{crgray}{\\textit{No hay síntesis disponibles para las variedades seleccionadas.}}\n")
+} else {
+  cat("\\textcolor{crgray}{\\textit{No hay datos suficientes.}}\n")
+}
+```
+
+# Tabla Comparativa de Resultados
+
+```{r tabla-comparativa, results='asis'}
+dt <- params$dat_tabla
+
+if (!is.null(dt) && is.data.frame(dt) && nrow(dt) > 0 &&
+    all(c("Variedad","Suelo","Tipo","Promedio") %in% names(dt))) {
+
+  dt2 <- dt %>% arrange(Suelo, desc(Promedio))
+
+  # Añadir columna de ranking dentro de cada suelo
+  dt2 <- dt2 %>%
+    group_by(Suelo) %>%
+    mutate(Rank = row_number()) %>%
+    ungroup() %>%
+    mutate(Rank = ifelse(Rank == 1, "\\#1 $\\star$", as.character(Rank)))
+
+  top_idx     <- which(!duplicated(dt2$Suelo))
+  testigo_idx  <- which(dt2$Tipo == "Testigo")
+  cand_idx     <- which(dt2$Tipo == "Candidata")
+
+  if ("Promedio_Absoluto" %in% names(dt2) && isTRUE(params$usar_relativo)) {
+    dt2 <- dt2 %>%
+      rename(`Prom. Relativo (%)` = Promedio, `Prom. Absoluto` = Promedio_Absoluto) %>%
+      select(Rank, Variedad, Tipo, Suelo, Cortes, `Prom. Relativo (%)`, `Prom. Absoluto`)
+    col_aligns <- c("c","l","c","l","c","r","r")
+  } else {
+    dt2 <- dt2 %>%
+      select(Rank, Variedad, Tipo, Suelo, Cortes, Promedio)
+    col_aligns <- c("c","l","c","l","c","r")
+  }
+
+  if (requireNamespace("kableExtra", quietly = TRUE)) {
+    library(kableExtra)
+    k <- knitr::kable(
+        dt2, format = "latex", booktabs = TRUE, escape = FALSE,
+        align = col_aligns,
+        caption = "Resumen Comparativo de Desempeño por Variedad y Ambiente"
+      ) %>%
+      kable_styling(latex_options = c("hold_position"),
+                    font_size = 8.5, full_width = FALSE) %>%
+      row_spec(0, bold = TRUE, color = "white", background = "#0B5C2E") %>%
+      row_spec(testigo_idx, background = "#EFF6FF", color = "#1D4ED8") %>%
+      row_spec(cand_idx,    background = "#F0FDF4") %>%
+      row_spec(top_idx, bold = TRUE)
+    k
+  } else {
+    knitr::kable(dt2, caption = "Resumen Comparativo de Desempeño")
+  }
+} else {
+  cat("\\textcolor{crgray}{\\textit{No hay datos tabulares disponibles.}}\n")
+}
+```
+
+\vspace{4pt}
+\footnotesize\textcolor{crgray}{%
+\textcolor{crblue}{\rule{8pt}{6pt}}~\textbf{Testigo de control}\quad
+\textcolor{crgreen3}{\rule{8pt}{6pt}}~\textbf{Variedad candidata}\quad
+\textbf{\textcolor{crgreen}{$\star$}}~Mejor desempeño del ambiente
+}\normalsize
+
+---
+
+\vspace{6pt}
+\begin{center}
+\small\color{crgray}
+\textbf{CR Breeding} — Sistema de Mejoramiento Genético · Central Romana Corp.\\[2pt]
+\textit{Documento generado automáticamente por el Módulo de Inteligencia Analítica · \reportdate}
+\end{center}

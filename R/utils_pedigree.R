@@ -25,205 +25,116 @@
 # @param cat_var    data.frame del catálogo con id_variedad, descripcion_variedad
 # @return data.frame con columnas: id, dadid, momid, sex, label
 # ------------------------------------------------------------------------------
-get_full_ancestry_robust <- function(data, target_id, cat_var = NULL) {
+get_full_ancestry_robust <- function(data, target_id, cat_var = NULL, missing_code = "0") {
   
+  stopifnot(
+    is.data.frame(data),
+    all(c("id_variedad", "id_variedad_ancestro", "tipo_ancestro") %in% names(data)),
+    is.character(target_id)
+  )
+
   target_id <- as.character(target_id)
   
-  # Estructuras de trabajo
-  visited <- character()
-  ped <- data.frame(
-    id     = character(),
-    dadid  = character(),
-    momid  = character(),
-    sex    = integer(),
-    label  = character(),
-    stringsAsFactors = FALSE
-  )
-  queue <- target_id
-  
   # --- Registro de roles para asignación de sexo consistente ---
-  # Un ID puede aparecer como PADRE en un cruce y MADRE en otro.
-  # Recolectamos TODOS los roles antes de asignar sexo.
-  role_as_dad <- unique(as.character(
-    data$id_variedad_ancestro[data$tipo_ancestro == "PADRE"]
-  ))
-  role_as_mom <- unique(as.character(
-    data$id_variedad_ancestro[data$tipo_ancestro == "MADRE"]
-  ))
+  role_as_dad <- unique(as.character(data$id_variedad_ancestro[data$tipo_ancestro == "PADRE"]))
+  role_as_mom <- unique(as.character(data$id_variedad_ancestro[data$tipo_ancestro == "MADRE"]))
+
+  # Preasignar con listas — O(n) en lugar de O(n²)
+  ids    <- vector("list", 1000L)
+  dads   <- vector("list", 1000L)
+  moms   <- vector("list", 1000L)
+  count  <- 0L
+
+  visited <- character()
+  queue   <- target_id
   
   # ============================
   # PASO 1: BFS — Reconstrucción
   # ============================
-  while (length(queue) > 0) {
-    current <- queue[1]
-    queue   <- queue[-1]
+  while (length(queue) > 0L) {
+    current <- queue[[1L]]
+    queue   <- queue[-1L]
     
-    # Protección: ya visitado, NA, o vacío
-    if (current %in% visited || is.na(current) || current == "") next
+    if (current %in% visited || is.na(current) || current == "" || current == missing_code) next
     visited <- c(visited, current)
     
-    # Buscar padres en la tabla de parentesco
-    parents <- data %>%
-      filter(id_variedad == current, id_variedad != id_variedad_ancestro)
+    # Buscar padres
+    parents <- data[data$id_variedad == current, , drop = FALSE]
+    dad_row <- parents[parents$tipo_ancestro == "PADRE", , drop = FALSE]
+    mom_row <- parents[parents$tipo_ancestro == "MADRE", , drop = FALSE]
     
-    dad_raw <- parents %>%
-      filter(tipo_ancestro == "PADRE") %>%
-      pull(id_variedad_ancestro) %>%
-      .[1]
-    
-    mom_raw <- parents %>%
-      filter(tipo_ancestro == "MADRE") %>%
-      pull(id_variedad_ancestro) %>%
-      .[1]
-    
-    # --- Manejo de fundadores desconocidos con IDs ÚNICOS ---
-    if (is.null(dad_raw) || is.na(dad_raw) || dad_raw == "") {
-      dad_id <- paste0("UNK_DAD_", current)
+    dad_id <- if (nrow(dad_row) > 0L && nzchar(dad_row$id_variedad_ancestro[[1L]])) {
+      as.character(dad_row$id_variedad_ancestro[[1L]])
     } else {
-      dad_id <- as.character(dad_raw)
+      missing_code
     }
     
-    if (is.null(mom_raw) || is.na(mom_raw) || mom_raw == "") {
-      mom_id <- paste0("UNK_MOM_", current)
+    mom_id <- if (nrow(mom_row) > 0L && nzchar(mom_row$id_variedad_ancestro[[1L]])) {
+      as.character(mom_row$id_variedad_ancestro[[1L]])
     } else {
-      mom_id <- as.character(mom_raw)
+      missing_code
     }
     
-    # Agregar individuo actual al pedigrí
-    ped <- rbind(ped, data.frame(
-      id     = current,
-      dadid  = dad_id,
-      momid  = mom_id,
-      sex    = NA_integer_,
-      label  = NA_character_,
+    count       <- count + 1L
+    ids[[count]]  <- current
+    dads[[count]] <- dad_id
+    moms[[count]] <- mom_id
+    
+    if (dad_id != missing_code) queue <- c(queue, dad_id)
+    if (mom_id != missing_code) queue <- c(queue, mom_id)
+  }
+  
+  if (count == 0L) {
+    return(data.frame(
+      id    = target_id,
+      dadid = missing_code,
+      momid = missing_code,
+      sex   = 1,
+      label = target_id,
       stringsAsFactors = FALSE
     ))
-    
-    # Encolar padres reales (no los UNK_*) para seguir explorando
-    if (!grepl("^UNK_", dad_id)) queue <- c(queue, dad_id)
-    if (!grepl("^UNK_", mom_id)) queue <- c(queue, mom_id)
   }
+
+  ped <- data.frame(
+    id    = unlist(ids[seq_len(count)]),
+    dadid = unlist(dads[seq_len(count)]),
+    momid = unlist(moms[seq_len(count)]),
+    stringsAsFactors = FALSE
+  )
+
+  # Paso 2: Metadatos (Sexo y Labels)
+  local_dads <- unique(ped$dadid[ped$dadid != missing_code])
+  local_moms <- unique(ped$momid[ped$momid != missing_code])
   
-  # ==============================================
-  # PASO 2: Agregar fundadores desconocidos (UNK_*)
-  # ==============================================
-  # Cada UNK_DAD_* y UNK_MOM_* referenciado debe existir como fila
-  all_parents <- unique(c(ped$dadid, ped$momid))
-  unknown_parents <- all_parents[grepl("^UNK_", all_parents)]
-  unknown_parents <- setdiff(unknown_parents, ped$id)
-  
-  if (length(unknown_parents) > 0) {
-    unk_rows <- data.frame(
-      id     = unknown_parents,
-      dadid  = NA_character_,
-      momid  = NA_character_,
-      sex    = NA_integer_,
-      label  = NA_character_,
-      stringsAsFactors = FALSE
-    )
-    ped <- rbind(ped, unk_rows)
-  }
-  
-  # ========================================================
-  # PASO 3: Verificar padres reales que falten como individuos
-  # ========================================================
-  # Algunos ancestros pueden no haber sido procesados por el BFS
-  # (ej: un padre que no tiene datos de parentesco propio)
-  all_referenced <- unique(c(ped$dadid, ped$momid))
-  all_referenced <- all_referenced[!is.na(all_referenced)]
-  missing_ids <- setdiff(all_referenced, ped$id)
-  
-  if (length(missing_ids) > 0) {
-    missing_rows <- data.frame(
-      id     = missing_ids,
-      dadid  = NA_character_,
-      momid  = NA_character_,
-      sex    = NA_integer_,
-      label  = NA_character_,
-      stringsAsFactors = FALSE
-    )
-    ped <- rbind(ped, missing_rows)
-  }
-  
-  # Eliminar duplicados
-  ped <- ped %>% distinct(id, .keep_all = TRUE)
-  
-  # =======================================
-  # PASO 4: Asignación de sexo CONSISTENTE
-  # =======================================
-  # Regla de prioridad:
-  #   1. Si aparece como dadid en el pedigrí local → sex = 1 (macho)
-  #   2. Si aparece como momid en el pedigrí local → sex = 2 (hembra)
-  #   3. Si es UNK_DAD_* → sex = 1
-  #   4. Si es UNK_MOM_* → sex = 2
-  #   5. Si aparece como PADRE en datos globales → sex = 1
-  #   6. Si aparece como MADRE en datos globales → sex = 2
-  #   7. Default (ej: la variedad objetivo) → sex = 1
-  
-  local_dads <- unique(ped$dadid[!is.na(ped$dadid)])
-  local_moms <- unique(ped$momid[!is.na(ped$momid)])
-  
-  ped$sex <- sapply(ped$id, function(x) {
+  ped$sex <- vapply(ped$id, function(x) {
     if (x %in% local_dads && !(x %in% local_moms)) return(1L)
     if (x %in% local_moms && !(x %in% local_dads)) return(2L)
-    if (x %in% local_dads && x %in% local_moms)     return(1L)  # Conflicto: priorizar macho
-    if (grepl("^UNK_DAD_", x)) return(1L)
-    if (grepl("^UNK_MOM_", x)) return(2L)
     if (x %in% role_as_dad) return(1L)
     if (x %in% role_as_mom) return(2L)
-    return(1L)  # Default
-  })
-  
-  # =======================================
-  # PASO 5: Labels (nombres comerciales)
-  # =======================================
+    return(1L)
+  }, integer(1))
+
   if (!is.null(cat_var)) {
-    cat_lookup <- cat_var %>%
-      select(id_variedad, descripcion_variedad) %>%
-      distinct(id_variedad, .keep_all = TRUE)
-    
     ped <- ped %>%
-      left_join(cat_lookup, by = c("id" = "id_variedad")) %>%
-      mutate(label = ifelse(
-        !is.na(descripcion_variedad),
-        descripcion_variedad,
-        ifelse(grepl("^UNK_", id), "Desconocido", paste0("ID:", id))
-      )) %>%
+      left_join(cat_var %>% select(id_variedad, descripcion_variedad) %>% distinct(id_variedad, .keep_all = TRUE), 
+                by = c("id" = "id_variedad")) %>%
+      mutate(label = ifelse(!is.na(descripcion_variedad), descripcion_variedad, paste0("ID:", id))) %>%
       select(-descripcion_variedad)
   } else {
-    ped$label <- ifelse(
-      grepl("^UNK_", ped$id),
-      "Desconocido",
-      paste0("ID:", ped$id)
+    ped$label <- paste0("ID:", ped$id)
+  }
+
+  # Paso 3: Requisito kinship2 (el código de fundador debe existir como individuo)
+  uses_missing <- missing_code %in% c(ped$dadid, ped$momid)
+  if (uses_missing && !missing_code %in% ped$id) {
+    ped <- rbind(
+      data.frame(id = missing_code, dadid = NA_character_, momid = NA_character_, 
+                 sex = 3, label = "Fundador", stringsAsFactors = FALSE),
+      ped
     )
   }
-  
-  # ==========================================
-  # PASO 6: Fundadores (UNK_*) → dadid/momid = NA
-  # ==========================================
-  # kinship2 con IDs character requiere NA (no "0") para indicar
-  # "sin padre/madre conocido". Los fundadores UNK_* ya existen como filas,
-  # y sus dadid/momid ya son NA. No necesitamos hacer nada aquí.
-  # Solo verificamos consistencia.
-  
-  # ==========================================
-  # PASO 7: Validación final de integridad
-  # ==========================================
-  all_ids_final <- ped$id
-  all_dads_final <- ped$dadid[!is.na(ped$dadid)]
-  all_moms_final <- ped$momid[!is.na(ped$momid)]
-  
-  orphan_dads <- setdiff(all_dads_final, all_ids_final)
-  orphan_moms <- setdiff(all_moms_final, all_ids_final)
-  
-  if (length(orphan_dads) > 0 || length(orphan_moms) > 0) {
-    warning(paste0(
-      "Integridad referencial comprometida. Padres huérfanos: ",
-      paste(c(orphan_dads, orphan_moms), collapse = ", ")
-    ))
-  }
-  
-  return(ped)
+
+  dplyr::distinct(ped, id, .keep_all = TRUE)
 }
 
 

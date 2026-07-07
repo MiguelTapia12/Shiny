@@ -12,120 +12,138 @@ mod_estado_variedad_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
-    fluidRow(
-      # Panel de búsqueda
-      box(
-        width = 3, title = "Seleccionar Variedad",
-        status = "warning", solidHeader = TRUE,
-        selectizeInput(
-          ns("var_estado"), "Variedad:",
-          choices = NULL,
-          options = list(maxOptions = 50,
-                         placeholder = "Buscar variedad activa...")
+    tags$style(HTML("
+      .bslib-value-box .value-box-grid { padding: 8px !important; gap: 5px !important; }
+      .bslib-value-box .value-box-title { font-size: 0.75rem !important; margin-bottom: 2px !important; }
+      .bslib-value-box .value-box-value { font-size: 1.1rem !important; font-weight: bold !important; }
+      .bslib-value-box .value-box-showcase { font-size: 1.5rem !important; opacity: 0.4 !important; }
+      .card-header { padding: 4px 10px !important; font-size: 0.85rem !important; font-weight: bold !important; }
+      .card-body { padding: 8px !important; }
+      hr { margin: 8px 0 !important; }
+    ")),
+    layout_column_wrap(
+      width = 1,
+      fill = FALSE,
+      layout_column_wrap(
+        width = 1/2,
+        fill = FALSE,
+        card(
+          height = "220px",
+          card_header(tagList(icon("address-card"), " Variedad y Notas")),
+          layout_column_wrap(
+            width = 1/2,
+            tagList(
+              selectizeInput(ns("var_estado"), NULL, choices = NULL, 
+                             options = list(placeholder = "Buscar variedad...")),
+              layout_column_wrap(
+                width = 1/2,
+                actionButton(ns("btn_estado"), "Ver Ficha", class = "btn-warning btn-sm"),
+                uiOutput(ns("download_ui"))
+              )
+            ),
+            tagList(
+              textAreaInput(ns("txt_notas"), NULL, placeholder = "Notas de campo...", rows = 2),
+              actionButton(ns("btn_save_note"), "Guardar Nota", class = "btn-success btn-sm w-100")
+            )
+          )
         ),
-        actionButton(ns("btn_estado"), "Ver Ficha Técnica",
-                     class = "btn-warning btn-block",
-                     icon = icon("address-card")),
-        br(),
-        uiOutput(ns("download_ui"))
-      ),
-      
-      # KPIs Principales (Corazón del Valor Genético)
-      box(
-        width = 9, title = "Métricas Principales (AllAct2025)",
-        status = "info", solidHeader = TRUE,
-        fluidRow(
-          valueBoxOutput(ns("vb_factor"), width = 2),
-          valueBoxOutput(ns("vb_categoria"), width = 3),
-          valueBoxOutput(ns("vb_maxest"), width = 2),
-          valueBoxOutput(ns("vb_adapt"), width = 2),
-          valueBoxOutput(ns("vb_status"), width = 3)
-        ),
-        hr(),
-        fluidRow(
-          column(9, textAreaInput(ns("txt_notas"), "Observaciones / Notas de Campo:", 
-                                 placeholder = "Escribe aquí cualquier detalle relevante sobre este clon...",
-                                 width = "100%", rows = 2)),
-          column(3, actionButton(ns("btn_save_note"), "Guardar Nota", 
-                                 class = "btn-success btn-block", 
-                                 style = "margin-top: 25px;",
-                                 icon = icon("save")))
+        card(
+          height = "220px",
+          card_header(tagList(icon("info-circle"), " Métricas Principales")),
+          uiOutput(ns("vboxes_principales"))
         )
       )
     ),
     
-    fluidRow(
-      # Tabs de detalle
-      tabBox(
-        width = 12, title = "Detalles Técnicos",
-        id = ns("tabs_detalle"),
-        
-        # Tab: Perfil Agronómico y de Rendimiento
-        tabPanel(
-          "Rendimiento y GCA", icon = icon("chart-bar"),
-          fluidRow(
-            column(12, 
-                   tags$h4("Métricas Relativas al Testigo"),
-                   tags$p("Basado en el índice de rendimiento (Y) y calidad (Q). Grados del 2 al 8, donde menor es mejor."),
-                   fluidRow(
-                     valueBoxOutput(ns("vb_y"), width = 6),
-                     valueBoxOutput(ns("vb_q"), width = 6)
-                   ),
-                   hr()
-            )
-          ),
-          fluidRow(
-            column(7, plotOutput(ns("plot_rendimiento"), height = "350px")),
-            column(5,
-                   tags$h4("Datos Exactos"),
-                   DT::DTOutput(ns("tabla_rendimiento_raw"))
-            )
-          )
-        ),
-        
-        # Tab: Sanidad
-        tabPanel(
-          "Sanidad (Enfermedades)", icon = icon("shield-virus"),
-          fluidRow(
-            column(12, 
-                   tags$h4("Score Global DISEASE: ", textOutput(ns("txt_disease"), inline=TRUE)),
-                   hr()
-            )
-          ),
-          fluidRow(
-            column(12, plotOutput(ns("plot_sanidad"), height = "300px"))
-          )
-        ),
-        
-        # Tab: Historial Reproductivo (Familias)
-        tabPanel(
-          "Historial Reproductivo", icon = icon("sitemap"),
-          fluidRow(
-            column(4,
-                   valueBoxOutput(ns("vb_fam_totales"), width = 12),
-                   valueBoxOutput(ns("vb_tasa_exito"), width = 12)
+    # Tabs de detalle técnicos
+    navset_card_pill(
+      title = "Detalles Técnicos y Performance",
+      nav_panel(
+        "Rendimiento y GCA", icon = icon("chart-bar"),
+        layout_column_wrap(
+          width = 1,
+          uiOutput(ns("vboxes_rendimiento")),
+          layout_column_wrap(
+            width = 1/2,
+            card(
+              card_header(tagList(icon("bullseye"), " Perfil Genético (Escala 0-10)")),
+              plotly::plotlyOutput(ns("plot_radar"), height = "320px")
             ),
-            column(8,
-                   plotOutput(ns("plot_familias_historico"), height = "250px")
-            )
-          ),
-          fluidRow(
-            column(12,
-                   tags$h4("Registro de Familias Evaluadas"),
-                   DT::DTOutput(ns("tabla_familias"))
+            card(
+              card_header(tagList(icon("table"), " Métricas Completas (Raw)")),
+              DT::DTOutput(ns("tabla_rendimiento_raw"))
             )
           )
         )
+      ),
+      nav_panel(
+        "Sanidad (Enfermedades)", icon = icon("shield-virus"),
+        card(
+          card_header(tagList(icon("virus-slash"), " Perfil Fitopatológico")),
+          tags$h5("Score Global DISEASE: ", textOutput(ns("txt_disease"), inline=TRUE), class = "mb-3"),
+          plotOutput(ns("plot_sanidad"), height = "340px")
+        )
+      ),
+      nav_panel(
+        "Historial Reproductivo", icon = icon("sitemap"),
+        layout_column_wrap(
+          width = 1/2,
+          card(
+            card_header("Resumen de Cruces"),
+            uiOutput(ns("vboxes_familias")),
+            hr(),
+            plotly::plotlyOutput(ns("plot_familias_historico"), height = "300px")
+          ),
+          card(
+            card_header("Registro de Familias Evaluadas"),
+            DT::DTOutput(ns("tabla_familias"))
+          )
+        )
+      ),
+      nav_panel(
+        "Trazabilidad de Clones", icon = icon("history"),
+        card(
+          card_header(tagList(icon("history"), " Explorador de Trazabilidad Genética")),
+          layout_column_wrap(
+            width = 1,
+            layout_column_wrap(
+              width = 1/2,
+              selectizeInput(ns("clon_search"), "ID del Clon / Variedad:", 
+                             choices = NULL, 
+                             options = list(placeholder = "Ej: 630-1, CR261001...", 
+                                            maxOptions = 100,
+                                            searchField = c("value", "label"))),
+              tags$div(
+                class = "d-flex flex-column gap-2",
+                actionButton(ns("btn_trace"), "Rastrear Historia", 
+                             class = "btn-primary w-100", 
+                             icon = icon("search-location")),
+                uiOutput(ns("download_btn_ui_trace"))
+              )
+            )
+          )
+        ),
+        uiOutput(ns("timeline_ui_trace"))
       )
     )
   )
 }
 
 # --- Server del Módulo ---
-mod_estado_variedad_server <- function(id, cat_var, pedigree_var, df_categorias, df_familias) {
+mod_estado_variedad_server <- function(id, cat_var, pedigree_var, df_categorias, df_familias, con) {
   moduleServer(id, function(input, output, session) {
     
     ns <- session$ns
+    
+    # Helper seguro para datos faltantes — siempre devuelve un escalar numérico
+    if_exists <- function(df, col) {
+      if (!(col %in% names(df))) return(NA_real_)
+      val <- df[[col]]
+      # Si es lista o vector múltiple, tomar solo el primer elemento
+      if (is.list(val)) val <- val[[1]]
+      if (length(val) != 1) val <- val[1]
+      suppressWarnings(as.numeric(val))
+    }
     
     # Poblar selectize SOLO con las variedades activas en df_categorias
     observe({
@@ -141,7 +159,7 @@ mod_estado_variedad_server <- function(id, cat_var, pedigree_var, df_categorias,
         filter(variedad == input$var_estado) %>%
         slice(1)
       
-      validate(need(nrow(target_info) > 0, "Variedad no encontrada en los registros de 2025."))
+      shiny::validate(need(nrow(target_info) > 0, "Variedad no encontrada en los registros de 2025."))
       
       target_id <- as.character(target_info$variedad)
       
@@ -183,82 +201,202 @@ mod_estado_variedad_server <- function(id, cat_var, pedigree_var, df_categorias,
       showNotification("Nota guardada con éxito en la Base de Datos.", type = "message")
     })
     
-    # --- KPIs Principales ---
-    output$vb_factor <- renderValueBox({
+    # --- KPIs Principales (bslib value_boxes) ---
+    output$vboxes_principales <- renderUI({
       req(var_data())
-      val <- round(var_data()$info$factor, 2)
-      valueBox(val, "FACTOR (Valor Cría)", icon = icon("star"), color = "yellow")
-    })
-    
-    output$vb_categoria <- renderValueBox({
-      req(var_data())
-      val <- var_data()$info$categoria
-      sub <- paste("Éxito EVF:", var_data()$info$evf_info)
+      d <- var_data()$info
+      
+      # Mapeo de colores bslib
       color_cat <- case_when(
-        grepl("C1", val) ~ "green",
-        grepl("C2", val) ~ "blue",
-        grepl("C3", val) ~ "purple",
-        grepl("C6", val) ~ "orange",
-        TRUE ~ "olive"
+        grepl("C1", d$categoria) ~ "success",
+        grepl("C2", d$categoria) ~ "primary",
+        grepl("C6", d$categoria) ~ "warning",
+        TRUE ~ "info"
       )
-      valueBox(val, sub, icon = icon("dna"), color = color_cat)
-    })
-    
-    output$vb_maxest <- renderValueBox({
-      req(var_data())
-      val <- var_data()$info$maxest
-      valueBox(val, "MAXEST (Max. Estado Alcanzado)", icon = icon("layer-group"), color = "blue")
-    })
-    
-    output$vb_adapt <- renderValueBox({
-      req(var_data())
-      val <- var_data()$info$adapt
+      
       color_suelo <- case_when(
-        toupper(val) == "GOOD" ~ "green",
-        toupper(val) == "CLAY" ~ "orange",
-        toupper(val) == "ROCKY" ~ "maroon",
-        TRUE ~ "aqua"
+        toupper(d$adapt) == "BUENO"       ~ "success",
+        toupper(d$adapt) == "MAL_DRENADO" ~ "warning",
+        toupper(d$adapt) == "ROCOSO"      ~ "danger",
+        TRUE ~ "secondary"
       )
-      valueBox(val, "Adaptación de Suelo", icon = icon("leaf"), color = color_suelo)
+      
+      layout_column_wrap(
+        width = 1/5,
+        height = "120px", # Altura fija para evitar estiramiento
+        value_box(
+          title = "FACTOR",
+          value = ifelse(is.na(d$factor), "N/A", as.character(round(d$factor, 2))),
+          showcase = icon("star"),
+          theme = "primary"
+        ),
+        value_box(
+          title = "Categoría",
+          value = ifelse(is.na(d$categoria), "Sin Cat.", as.character(d$categoria)),
+          showcase = icon("dna"),
+          theme = color_cat
+        ),
+        value_box(
+          title = "Status",
+          value = ifelse(is.na(d$status), "N/A", as.character(d$status)),
+          showcase = icon("check-circle"),
+          theme = "info"
+        ),
+        value_box(
+          title = "Suelo",
+          value = d$adapt,
+          showcase = icon("leaf"),
+          theme = color_suelo
+        ),
+        value_box(
+          title = "MAXEST",
+          value = d$maxest,
+          showcase = icon("layer-group"),
+          theme = "secondary"
+        )
+      )
     })
     
-    output$vb_status <- renderValueBox({
+    # --- Tab: Rendimiento y Agronomía (bslib value_boxes) ---
+    output$vboxes_rendimiento <- renderUI({
       req(var_data())
-      val <- var_data()$info$status
-      desc <- ifelse(val == "E", "E (Exploratoria)", ifelse(val == "P", "P (Probada)", val))
-      valueBox(desc, "Status / STA", icon = icon("check-circle"), color = "purple")
+      d <- var_data()$info
+      
+      val_y <- if_exists(d, "y")
+      val_q <- if_exists(d, "q")
+      
+      # Traducción del grado a índice para Y
+      y_idx <- case_when(
+        is.na(val_y) ~ "N/D",
+        val_y == 8 ~ "< 80%",
+        val_y == 7 ~ "80-90%",
+        val_y == 6 ~ "90-100%",
+        val_y == 5 ~ "100-110%",
+        val_y == 4 ~ "110-120%",
+        val_y == 3 ~ "120-130%",
+        val_y == 2 ~ "> 130%",
+        TRUE ~ as.character(val_y)
+      )
+      
+      # Traducción del grado a índice para Q
+      q_idx <- case_when(
+        is.na(val_q) ~ "N/D",
+        val_q == 8 ~ "< 90%",
+        val_q == 7 ~ "90-95%",
+        val_q == 6 ~ "95-100%",
+        val_q == 5 ~ "100-110%",
+        val_q == 4 ~ "105-110%",
+        val_q == 3 ~ "110-115%",
+        val_q == 2 ~ "> 115%",
+        TRUE ~ as.character(val_q)
+      )
+      
+      color_y <- if(is.na(val_y)) "secondary" else if(val_y <= 4) "success" else if(val_y <= 6) "warning" else "danger"
+      color_q <- if(is.na(val_q)) "secondary" else if(val_q <= 4) "success" else if(val_q <= 6) "warning" else "danger"
+      
+      layout_column_wrap(
+        width = 1/2,
+        value_box(
+          title = paste("Yield (Y) - Testigo:", y_idx),
+          value = paste("Grado", ifelse(is.na(val_y), "N/D", val_y)),
+          showcase = icon("balance-scale"),
+          theme = color_y
+        ),
+        value_box(
+          title = paste("Quality (Q) - Testigo:", q_idx),
+          value = paste("Grado", ifelse(is.na(val_q), "N/D", val_q)),
+          showcase = icon("gem"),
+          theme = color_q
+        )
+      )
     })
     
-    # --- Tab: Rendimiento y Agronomía ---
-    output$plot_rendimiento <- renderPlot({
+    # --- Tab: Historial Reproductivo (bslib value_boxes) ---
+    output$vboxes_familias <- renderUI({
+      req(var_data())
+      d <- var_data()
+      fam <- d$familias
+      
+      totales <- nrow(fam)
+      if (totales == 0) {
+        return(layout_column_wrap(
+          width = 1,
+          value_box(title = "Cruces Totales", value = 0, showcase = icon("users"), theme = "secondary")
+        ))
+      }
+      
+      seleccionadas <- sum(fam$accion == "S", na.rm = TRUE)
+      tasa <- round((seleccionadas / totales) * 100, 1)
+      color_tasa <- if(tasa >= 20) "success" else if(tasa > 0) "warning" else "danger"
+      
+      layout_column_wrap(
+        width = 1/2,
+        value_box(
+          title = paste0("♂:", d$n_como_padre, " ♀:", d$n_como_madre),
+          value = paste(totales, "Cruces"),
+          showcase = icon("users"),
+          theme = "primary"
+        ),
+        value_box(
+          title = "Tasa de Selección (S)",
+          value = paste0(tasa, "%"),
+          showcase = icon("trophy"),
+          theme = color_tasa
+        )
+      )
+    })
+    
+    # --- Tab: Rendimiento y GCA (RADAR CHART) ---
+    output$plot_radar <- plotly::renderPlotly({
       req(var_data())
       info <- var_data()$info
       
-      # Preparar datos para un gráfico de barras horizontal comparativo (sin TCA/REND/TAA ya que pueden faltar)
-      df_plot <- data.frame(
-        Metrica = c("AGRO (Agronómico)", "GEN (Genético)"),
-        Valor = c(info$agro, info$gen)
-      ) %>%
-        # Ordenar barras
-        mutate(Metrica = factor(Metrica, levels = rev(Metrica)))
+      # Extraer valores y normalizar a escala 0-10 donde MAYOR es MEJOR
+      val_factor <- if_exists(info, "factor")
+      val_y <- if_exists(info, "y")
+      val_q <- if_exists(info, "q")
+      val_disease <- if_exists(info, "disease")
       
-      ggplot(df_plot, aes(x = Metrica, y = Valor, fill = Metrica)) +
-        geom_col(color = "#2c3e50") +
-        geom_text(aes(label = round(Valor, 2)), hjust = -0.2, fontface = "bold", size = 5) +
-        coord_flip() +
-        scale_fill_brewer(palette = "Set2") +
-        scale_y_continuous(expand = expansion(mult = c(0, 0.2))) +
-        labs(
-          title = "Perfil Agronómico y de Rendimiento",
-          subtitle = paste("Variedad:", var_data()$nombre),
-          x = "", y = "Valor"
-        ) +
-        theme_minimal(base_size = 14) +
-        theme(
-          legend.position = "none",
-          plot.title = element_text(face = "bold", color = "#2c3e50"),
-          axis.text.y = element_text(face = "bold", size = 12)
-        )
+      # Transformaciones:
+      # Factor: asume max ~1.5. Normalizado = (factor / 1.5) * 10
+      f_norm <- ifelse(is.na(val_factor), 0, min((val_factor / 1.5) * 10, 10))
+      # Y y Q: en la BD 1-2 es excelente, 8-9 es malo. Invertimos: 10 - val
+      y_norm <- ifelse(is.na(val_y), 0, max(10 - val_y, 0))
+      q_norm <- ifelse(is.na(val_q), 0, max(10 - val_q, 0))
+      # Disease: 0 es excelente, 9 es malo. Invertimos: 10 - disease
+      s_norm <- ifelse(is.na(val_disease), 0, max(10 - val_disease, 0))
+      
+      df_radar <- data.frame(
+        Eje = c("Potencial Híbrido (Factor)", "Rendimiento Agrícola (Y)", 
+                "Calidad Jugo (Q)", "Sanidad (Resistencia)"),
+        Valor = c(f_norm, y_norm, q_norm, s_norm)
+      )
+      
+      # Plotly Radar Chart
+      plotly::plot_ly(
+        type = 'scatterpolar',
+        r = c(df_radar$Valor, df_radar$Valor[1]),
+        theta = c(df_radar$Eje, df_radar$Eje[1]),
+        fill = 'toself',
+        fillcolor = 'rgba(39, 174, 96, 0.4)',  # Verde esmeralda transparente
+        line = list(color = '#27ae60', width = 2),
+        marker = list(color = '#1e8449', size = 8),
+        hoverinfo = "text",
+        text = c(paste(df_radar$Eje, ":", round(df_radar$Valor, 1), "/ 10"), "")
+      ) %>%
+        plotly::layout(
+          polar = list(
+            radialaxis = list(
+              visible = TRUE,
+              range = c(0, 10),
+              tickvals = c(0, 2, 4, 6, 8, 10),
+              ticktext = c("0", "2", "4", "6", "8", "10")
+            )
+          ),
+          showlegend = FALSE,
+          margin = list(t = 20, b = 20, l = 40, r = 40)
+        ) %>%
+        plotly::config(displayModeBar = FALSE)
     })
     
     output$tabla_rendimiento_raw <- DT::renderDT({
@@ -267,8 +405,9 @@ mod_estado_variedad_server <- function(id, cat_var, pedigree_var, df_categorias,
       
       df_raw <- data.frame(
         Métrica = c("TCA", "REND", "TAA", "AGRO", "GEN", "GCAM", "GCAP", "GCAT", "GCAMEAN"),
-        Valor = c(info$tca, info$rend, info$taa, info$agro, info$gen, 
-                  info$gcam, info$gcap, info$gcat, info$gcamean)
+        Valor = c(if_exists(info, "tca"), if_exists(info, "rend"), if_exists(info, "taa"), 
+                  if_exists(info, "agro"), if_exists(info, "gen"), 
+                  if_exists(info, "gcam"), if_exists(info, "gcap"), if_exists(info, "gcat"), if_exists(info, "gcamean"))
       )
       
       DT::datatable(
@@ -288,133 +427,99 @@ mod_estado_variedad_server <- function(id, cat_var, pedigree_var, df_categorias,
       req(var_data())
       info <- var_data()$info
       
-      # Datos de las 3 enfermedades principales
-      df_enf <- data.frame(
-        Enfermedad = c("Carbón", "Roya", "Escaldadura"),
-        Score = c(info$carbon, info$roya, info$es)
-      ) %>%
-        mutate(
-          # Determinar la categoría (Resistente, Intermedio, Susceptible) basado en los umbrales
-          Categoria = case_when(
-            Score <= 2 ~ "R (Resistente)",
-            Score <= 4 ~ "I (Intermedio)",
-            TRUE ~ "S (Susceptible)"
-          ),
-          Enfermedad = factor(Enfermedad, levels = c("Escaldadura", "Roya", "Carbón"))
-        )
+      v_carbon <- if_exists(info, "carbon")
+      v_roya   <- if_exists(info, "roya")
+      v_es     <- if_exists(info, "es")
       
-      # Colores semáforo
-      colores_semaforo <- c("R (Resistente)" = "#27ae60", 
-                            "I (Intermedio)" = "#f1c40f", 
-                            "S (Susceptible)" = "#c0392b")
-      
-      ggplot(df_enf, aes(x = Enfermedad, y = Score, fill = Categoria)) +
-        geom_col(color = "#333333", width = 0.6) +
-        geom_text(aes(label = paste(Score, "-", substr(Categoria, 1, 1))), 
-                  hjust = -0.3, fontface = "bold", size = 5) +
-        coord_flip(ylim = c(0, max(10, max(df_enf$Score) + 2))) +
-        scale_fill_manual(values = colores_semaforo) +
-        labs(
-          title = "Niveles de Infección",
-          subtitle = "Escala de Severidad",
-          x = "", y = "Grado de Reacción"
-        ) +
-        theme_minimal(base_size = 14) +
-        theme(
-          plot.title = element_text(face = "bold", color = "#2c3e50"),
-          axis.text.y = element_text(face = "bold", size = 12),
-          legend.position = "bottom"
-        )
-    })
-    
-    output$vb_y <- renderValueBox({
-      req(var_data())
-      y_val <- var_data()$info$y_score
-      
-      # Traducción del grado a índice
-      y_idx <- case_when(
-        is.na(y_val) ~ "N/D",
-        y_val == 8 ~ "< 80%",
-        y_val == 7 ~ "80-90%",
-        y_val == 6 ~ "90-100%",
-        y_val == 5 ~ "100-110%",
-        y_val == 4 ~ "110-120%",
-        y_val == 3 ~ "120-130%",
-        y_val == 2 ~ "> 130%",
-        TRUE ~ as.character(y_val)
-      )
-      
-      color_y <- ifelse(is.na(y_val), "navy", ifelse(y_val <= 4, "green", ifelse(y_val <= 6, "yellow", "red")))
-      valueBox(paste0("Grado ", y_val), paste("Yield (Y) - Testigo:", y_idx), icon = icon("balance-scale"), color = color_y)
-    })
-    
-    output$vb_q <- renderValueBox({
-      req(var_data())
-      q_val <- var_data()$info$q_score
-      
-      # Traducción del grado a índice
-      q_idx <- case_when(
-        is.na(q_val) ~ "N/D",
-        q_val == 8 ~ "< 90%",
-        q_val == 7 ~ "90-95%",
-        q_val == 6 ~ "95-100%",
-        q_val == 5 ~ "100-110%",
-        q_val == 4 ~ "105-110%",
-        q_val == 3 ~ "110-115%",
-        q_val == 2 ~ "> 115%",
-        TRUE ~ as.character(q_val)
-      )
-      
-      color_q <- ifelse(is.na(q_val), "navy", ifelse(q_val <= 4, "green", ifelse(q_val <= 6, "yellow", "red")))
-      valueBox(paste0("Grado ", q_val), paste("Quality (Q) - Testigo:", q_idx), icon = icon("gem"), color = color_q)
-    })
-    
-    # --- Tab: Historial Reproductivo ---
-    output$vb_fam_totales <- renderValueBox({
-      req(var_data())
-      totales <- nrow(var_data()$familias)
-      subtitle <- paste0("Cruces (♂:", var_data()$n_como_padre, " ♀:", var_data()$n_como_madre, ")")
-      valueBox(totales, subtitle, icon = icon("users"), color = "purple")
-    })
-    
-    output$vb_tasa_exito <- renderValueBox({
-      req(var_data())
-      fam <- var_data()$familias
-      if (nrow(fam) == 0) return(valueBox("N/A", "Tasa de Selección", icon = icon("percentage"), color = "gray"))
-      
-      seleccionadas <- sum(fam$accion == "S", na.rm = TRUE)
-      tasa <- round((seleccionadas / nrow(fam)) * 100, 1)
-      
-      color_tasa <- ifelse(tasa >= 20, "green", ifelse(tasa > 0, "yellow", "red"))
-      valueBox(paste0(tasa, "%"), "Familias Seleccionadas (S)", icon = icon("trophy"), color = color_tasa)
-    })
-    
-    output$plot_familias_historico <- renderPlot({
-      req(var_data())
-      fam <- var_data()$familias
-      if (nrow(fam) == 0) {
+      if (all(is.na(c(v_carbon, v_roya, v_es)))) {
         plot.new()
-        text(0.5, 0.5, "Sin historial de familias", cex = 1.5, col = "#7f8c8d")
+        text(0.5, 0.6, "Datos detallados de sanidad no disponibles en la BD.", cex = 1.3, col = "#2c3e50", font = 2)
+        text(0.5, 0.4, "(Presione 'SINCRONIZAR SISTEMA' para cargar Carbón, Roya y Escaldadura desde Excel)", cex = 1.0, col = "#7f8c8d")
         return()
       }
       
-      ggplot(fam, aes(x = ano, fill = accion_desc)) +
-        geom_bar() +
-        scale_fill_manual(values = c("Seleccionada" = "#27ae60", 
-                                     "Rechazada" = "#c0392b", 
-                                     "En Evaluación" = "#f39c12")) +
-        labs(
-          title = "Evaluación de Familias por Año",
-          x = "Año del Cruce",
-          y = "Cantidad de Familias",
-          fill = "Decisión"
-        ) +
-        theme_minimal(base_size = 13) +
-        theme(
-          plot.title = element_text(face = "bold", color = "#2c3e50"),
-          axis.text.x = element_text(angle = 45, hjust = 1, face = "bold"),
-          legend.position = "bottom"
+      df_enf <- data.frame(
+        Enfermedad = c("Carbón", "Roya", "Escaldadura"),
+        Score      = c(
+          ifelse(is.na(v_carbon), 0, v_carbon),
+          ifelse(is.na(v_roya),   0, v_roya),
+          ifelse(is.na(v_es),     0, v_es)
         )
+      ) %>%
+        mutate(
+          Color = case_when(
+            Score <= 3 ~ "#27ae60",   # Verde: Resistente
+            Score <= 6 ~ "#f39c12",   # Naranja: Intermedio
+            TRUE       ~ "#c0392b"    # Rojo: Susceptible
+          ),
+          Label = case_when(
+            Score <= 3 ~ paste0(Score, " — Resistente"),
+            Score <= 6 ~ paste0(Score, " — Intermedio"),
+            TRUE       ~ paste0(Score, " — Susceptible")
+          ),
+          Enfermedad = factor(Enfermedad, levels = c("Carbón", "Roya", "Escaldadura"))
+        )
+      
+      ggplot(df_enf, aes(x = Enfermedad, y = Score, fill = Color)) +
+        geom_col(width = 0.45, color = "white", show.legend = FALSE) +
+        geom_text(aes(label = Label), vjust = -0.5, fontface = "bold", size = 4.2, color = "#2c3e50") +
+        scale_fill_identity() +
+        scale_y_continuous(limits = c(0, 11), breaks = c(0, 3, 6, 9)) +
+        geom_hline(yintercept = 3, linetype = "dashed", color = "#27ae60", alpha = 0.6) +
+        geom_hline(yintercept = 6, linetype = "dashed", color = "#f39c12", alpha = 0.6) +
+        labs(
+          title    = "Perfil Sanitario",
+          subtitle = paste0("Score Global DISEASE: ", round(if_exists(info, "disease"), 2), "  |  Escala: 0 = Sin infección, 9 = Alta susceptibilidad"),
+          x = "", y = "Grado de Reacción (0–9)"
+        ) +
+        theme_minimal(base_size = 11) +
+        theme(
+          plot.title    = element_text(face = "bold", color = "#2c3e50", size = 11),
+          plot.subtitle = element_text(color = "#7f8c8d", size = 9),
+          axis.text.x   = element_text(face = "bold", size = 10),
+          panel.grid.major.x = element_blank(),
+          plot.margin   = margin(2, 2, 2, 2)
+        )
+    })
+    
+    # --- Tab: Historial Reproductivo ---
+    output$plot_familias_historico <- plotly::renderPlotly({
+      req(var_data())
+      fam <- var_data()$familias
+      if (nrow(fam) == 0) {
+        return(plotly::plotly_empty(type = "scatter", mode = "markers") %>% 
+                 plotly::layout(title = list(text = "Sin historial de familias", font = list(color = "#7f8c8d"))))
+      }
+      
+      tryCatch({
+        # Resumir por año y decisión para Plotly
+        df_agg <- fam %>%
+          count(ano, accion_desc) %>%
+          arrange(ano)
+        
+        # Colores personalizados
+        colores <- c(
+          "Seleccionada" = "#27ae60",
+          "Rechazada" = "#c0392b",
+          "En Evaluación" = "#f39c12"
+        )
+        
+        plotly::plot_ly(df_agg, x = ~ano, y = ~n, color = ~accion_desc, colors = colores,
+                        type = "bar", text = ~n, textposition = 'auto',
+                        hoverinfo = "text", hovertext = ~paste("Año:", ano, "<br>Estado:", accion_desc, "<br>Familias:", n)) %>%
+          plotly::layout(
+            title = list(text = "Evaluación de Familias por Año", x = 0.05, font = list(size = 14, color = "#2c3e50", family = "Arial-Bold")),
+            xaxis = list(title = "", tickangle = -45, type = 'category'),
+            yaxis = list(title = "Número de Familias"),
+            barmode = "stack",
+            legend = list(orientation = "h", xanchor = "center", x = 0.5, y = -0.2),
+            margin = list(t = 40, b = 40, l = 40, r = 20)
+          ) %>%
+          plotly::config(displayModeBar = FALSE)
+      }, error = function(e) {
+        plotly::plotly_empty() %>% 
+          plotly::layout(title = list(text = paste("Error al graficar:", e$message), font = list(color = "#c0392b")))
+      })
     })
     
     output$tabla_familias <- DT::renderDT({
@@ -457,7 +562,7 @@ mod_estado_variedad_server <- function(id, cat_var, pedigree_var, df_categorias,
     # --- Botón de Exportación ---
     output$download_ui <- renderUI({
       req(var_data())
-      downloadButton(ns("download_ficha"), "Bajar Ficha (.xlsx)", class = "btn-info btn-block")
+      downloadButton(ns("download_ficha"), "Excel", class = "btn-info btn-sm w-100")
     })
     
     output$download_ficha <- downloadHandler(
@@ -482,6 +587,91 @@ mod_estado_variedad_server <- function(id, cat_var, pedigree_var, df_categorias,
       }
     )
     
+    # --- Lógica de Trazabilidad Integrada ---
+    
+    # Poblar búsqueda de trazabilidad
+    observe({
+      cat_ids <- if (!is.null(df_categorias())) df_categorias()$variedad else c()
+      clones_ids <- c()
+      for (st in c("st1", "st2", "st3", "st4", "st5")) {
+        table_name <- paste0("clones_", st)
+        df_st <- tryCatch(
+          dbGetQuery(con, sprintf("SELECT DISTINCT anio_seleccion AS anio, cruce, num_sel FROM %s", table_name)),
+          error = function(e) NULL
+        )
+        if (!is.null(df_st) && nrow(df_st) > 0) {
+          clones_ids <- c(clones_ids, paste0(df_st$anio, " | ", df_st$cruce, "-", df_st$num_sel))
+        }
+      }
+      all_ids <- sort(unique(c(cat_ids, clones_ids)))
+      updateSelectizeInput(session, "clon_search", choices = all_ids, server = TRUE)
+    })
+    
+    trace_data <- eventReactive(input$btn_trace, {
+      req(input$clon_search)
+      input_str <- input$clon_search
+      search_year <- NULL
+      id_target <- input_str
+      
+      if (grepl(" | ", input_str, fixed = TRUE)) {
+        parts <- strsplit(input_str, " | ", fixed = TRUE)[[1]]
+        search_year <- as.integer(parts[1])
+        id_target <- parts[2]
+      }
+      
+      # 0. ¿Es una variedad CR promocionada? Buscar su clon origen
+      promo_info <- tryCatch(
+        dbGetQuery(con, "SELECT * FROM promociones WHERE nombre_cr = ?", params = list(id_target)),
+        error = function(e) data.frame()
+      )
+      id_query <- if(nrow(promo_info) > 0) promo_info$clon_origen[1] else id_target
+      
+      # Buscamos en todas las tablas ST
+      hitos <- list()
+      for (st in c("st1", "st2", "st3", "st4", "st5")) {
+        df_h <- tryCatch({
+          if (grepl("-", id_query)) {
+            pts <- strsplit(id_query, "-")[[1]]
+            q <- sprintf("SELECT * FROM clones_%s WHERE cruce = ? AND num_sel = ?", st)
+            dbGetQuery(con, q, params = list(pts[1], as.integer(pts[2])))
+          } else {
+            q <- sprintf("SELECT * FROM clones_%s WHERE cruce = ? OR cruce || '-' || num_sel = ?", st)
+            dbGetQuery(con, q, params = list(id_query, id_query))
+          }
+        }, error = function(e) NULL)
+        
+        if (!is.null(df_h) && nrow(df_h) > 0) {
+          if (!is.null(search_year)) df_h <- df_h %>% filter(anio_seleccion == search_year)
+          if (nrow(df_h) > 0) hitos[[st]] <- df_h %>% mutate(stage = toupper(st))
+        }
+      }
+      
+      list(id = id_target, year = search_year, hitos = hitos)
+    })
+    
+    output$timeline_ui_trace <- renderUI({
+      req(trace_data())
+      d <- trace_data()
+      if (length(d$hitos) == 0) return(p("No se encontró historial de selección para este ID.", class="text-muted p-4"))
+      
+      tagList(
+        lapply(names(d$hitos), function(st) {
+          h <- d$hitos[[st]]
+          card(
+            class = "mb-2 border-start border-4 border-info",
+            card_header(paste("Hito en", st)),
+            layout_column_wrap(
+              width = 1/4,
+              tags$div(tags$b("Año: "), h$anio_seleccion),
+              tags$div(tags$b("Cruce: "), h$cruce),
+              tags$div(tags$b("Brix: "), round(as.numeric(h$brix), 2)),
+              tags$div(tags$b("Estado: "), ifelse(h$seleccionado == 1, "SELECCIONADO", "RECHAZADO"))
+            )
+          )
+        })
+      )
+    })
+
     return(var_data)
   })
 }

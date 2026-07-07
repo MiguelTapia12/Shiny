@@ -13,137 +13,320 @@ mod_cruzamientos_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
-    fluidRow(
-      # Panel de filtros
-      box(
-        width = 4, title = "Configuración de Cruzamientos",
-        status = "success", solidHeader = TRUE,
-        icon = icon("sliders-h"),
+    # CSS para calendario de fechas
+    tags$head(tags$style(HTML("
+      .fecha-selector-wrap .air-datepicker {
+        border: none !important;
+        box-shadow: none !important;
+        width: 100% !important;
+      }
+      .air-datepicker-cell.-has-data- {
+        background: #bbf7d0 !important;
+        color: #15803d !important;
+        font-weight: 700 !important;
+        border-radius: 50% !important;
+      }
+      .air-datepicker-cell.-has-data-.-selected- {
+        background: #16a34a !important;
+        color: white !important;
+      }
+      .fecha-info-box {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        font-size: 12px;
+        align-items: center;
+      }
+      .fecha-info-box .fi-date { font-weight: 700; color: #15803d; }
+      .fecha-info-box .fi-badge {
+        background: #dcfce7;
+        color: #166534;
+        padding: 1px 7px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .fecha-vacia {
+        text-align: center;
+        color: #94a3b8;
+        font-size: 12px;
+        padding: 10px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 8px;
+        margin-top: 6px;
+      }
+    "))),
+
+    layout_sidebar(
+      sidebar = sidebar(
+        width = 400,
+        title = tagList(icon("sliders-h"), " Configuración"),
         
-        # Modo de Planificación
-        radioButtons(ns("modo_plan"), "Modo de Planificación:",
-                     choices = c("Teórico (Catálogo Completo)", "Operativo (Sincronización Floral)"),
-                     selected = "Teórico (Catálogo Completo)"),
-        
-        # UI Condicional: Modo Operativo
-        conditionalPanel(
-          condition = paste0("input['", ns("modo_plan"), "'] == 'Operativo (Sincronización Floral)'"),
-          fileInput(ns("file_floracion"), "Subir Datos de Floración Semanal (CSV/Excel)", 
-                    accept = c(".csv", ".xls", ".xlsx")),
-          helpText("El archivo debe contener las columnas: VARIEDAD, SX, EMF_ACTUAL")
+        # Selector de Fechas - Calendario con fechas resaltadas
+        tags$div(
+          class = "fecha-selector-wrap mb-2",
+          tags$div(
+            class = "d-flex justify-content-between align-items-center mb-2",
+            tags$span(
+              icon("calendar-check"), " ",
+              tags$strong("Evaluaciones Disponibles"),
+              class = "text-dark"
+            ),
+            actionButton(ns("btn_refresh_fechas"), NULL,
+                         icon  = icon("rotate"),
+                         class = "btn-outline-secondary btn-sm",
+                         title = "Refrescar")
+          ),
+          # Calendario con fechas resaltadas
+          uiOutput(ns("ui_calendar")),
+          # Info de la fecha seleccionada
+          uiOutput(ns("ui_fecha_info"))
         ),
         
         hr(),
         
-        # Pool de progenitores (Ocultar en modo operativo)
-        conditionalPanel(
-          condition = paste0("input['", ns("modo_plan"), "'] == 'Teórico (Catálogo Completo)'"),
+        # El modo teórico ha sido eliminado por solicitud del usuario para simplificar la app
+        hidden(
           selectizeInput(
             ns("pool_madres"), "Pool de Madres:",
-            choices = NULL, multiple = TRUE,
-            options = list(maxOptions = 100, placeholder = "Todas las disponibles...")
+            choices = NULL, multiple = TRUE
           ),
-          selectizeInput(
-            ns("pool_padres"), "Pool de Padres:",
-            choices = NULL, multiple = TRUE,
-            options = list(maxOptions = 100, placeholder = "Todas las disponibles...")
+          radioButtons(ns("modo_plan"), "Modo de Planificación:",
+                       choices = c("Operativo (Sincronización Floral)"),
+                       selected = "Operativo (Sincronización Floral)")
+        ),
+        
+        accordion(
+          open = FALSE,
+          accordion_panel(
+            "Filtros de Adaptación",
+            icon = icon("leaf"),
+            selectInput(ns("filtro_suelo"), "Tipo de Suelo Objetivo:",
+                        choices = c("Cualquiera", "BUENO", "MAL_DRENADO", "ROCOSO"),
+                        selected = "Cualquiera")
+          ),
+          accordion_panel(
+            "Pesos del Modelo",
+            icon = icon("balance-scale"),
+            sliderInput(ns("limit_f"), "Máxima Consanguinidad (F):",
+                        min = 0, max = 0.25, value = 0.0625, step = 0.005),
+            sliderInput(ns("w_genetic"), "Peso: Diversidad (1-F)",
+                        min = 0, max = 1, value = 0.3, step = 0.05),
+            sliderInput(ns("w_factor"), "Peso: Valor (FACTOR)",
+                        min = 0, max = 1, value = 0.7, step = 0.05),
+            uiOutput(ns("peso_feedback"))
+          ),
+          accordion_panel(
+            "Seguridad",
+            icon = icon("shield-alt"),
+            checkboxInput(ns("solo_evitar_directos"), "Omitir cálculo de F", value = FALSE),
+            numericInput(ns("top_n"), "Top N cruces:", value = 50, min = 10, max = 500)
           )
         ),
         
         hr(),
-        tags$h5(icon("leaf"), "Adaptación Específica", style = "font-weight: bold;"),
-        
-        # Filtro de Suelo
-        selectInput(ns("filtro_suelo"), "Tipo de Suelo Objetivo:",
-                    choices = c("Cualquiera", "GOOD", "CLAY", "ROCKY"),
-                    selected = "Cualquiera"),
-        
-        # Tipo de Cruce
-        selectInput(ns("tipo_cruce"), "Tipo de Cruce Objetivo:",
-                    choices = c("Biparental", "Policruce"),
-                    selected = "Biparental"),
-        helpText("Biparental: Prioriza éxito probado (C1/C6)."),
-        helpText("Policruce: Prioriza variabilidad de categorías."),
-        
-        hr(),
-        tags$h5(icon("balance-scale"), "Pesos del Modelo", style = "font-weight: bold;"),
-        
-        # Umbral de consanguinidad
-        sliderInput(ns("limit_f"), "Máxima Consanguinidad (F):",
-                    min = 0, max = 0.25, value = 0.0625, step = 0.005),
-        
-        # Pesos de criterios
-        sliderInput(ns("w_genetic"), "Peso: Diversidad Genética (1-F)",
-                    min = 0, max = 1, value = 0.3, step = 0.05),
-        sliderInput(ns("w_factor"), "Peso: Valor Real (FACTOR)",
-                    min = 0, max = 1, value = 0.7, step = 0.05),
-        
-        hr(),
-        tags$h5(icon("shield-alt"), "Seguridad Genética", style = "font-weight: bold;"),
-        checkboxInput(ns("solo_evitar_directos"), "Omitir cálculo de F (Solo evitar parientes directos)", value = FALSE),
-        helpText("Útil si la base de datos de parentesco está incompleta."),
-        
-        # Número de sugerencias
-        numericInput(ns("top_n"), "Top N cruces:", value = 50, min = 10, max = 500),
-        
-        hr(),
         actionButton(ns("btn_simular"), "Simular Cruzamientos",
-                     class = "btn-primary btn-block",
+                     class = "btn-primary w-100 mb-2",
                      icon = icon("vials")),
         
-        downloadButton(ns("btn_export"), "Exportar CSV (Resumen)",
-                       class = "btn-info btn-block"),
+        downloadButton(ns("btn_export"), "Exportar Resumen",
+                       class = "btn-outline-info w-100 mb-3"),
         
         hr(),
-        tags$h5(icon("print"), "Herramientas de Campo", style = "font-weight: bold;"),
-        numericInput(ns("num_lanterna_start"), "Número Inicial de Lanterna:", value = 1, min = 1),
-        downloadButton(ns("btn_export_campo"), "Descargar Hoja de Montaje (Imprimible)",
-                       class = "btn-success btn-block")
+        tags$h6("Herramientas de Campo", class = "text-muted"),
+        numericInput(ns("num_lanterna_start"), "Nº Inicial Policruce:", value = 1, min = 1),
+        downloadButton(ns("btn_export_campo"), "Hoja de Montaje",
+                       class = "btn-success w-100")
       ),
       
-      # Panel de resultados
-      box(
-        width = 8, title = "Cruzamientos Recomendados",
-        status = "primary", solidHeader = TRUE,
-        
-        # KPIs superiores
-        fluidRow(
-          valueBoxOutput(ns("vb_total_cruces"), width = 4),
-          valueBoxOutput(ns("vb_avg_f"), width = 4),
-          valueBoxOutput(ns("vb_best_score"), width = 4)
-        ),
-        
-        # Tabla de resultados
-        DT::DTOutput(ns("tabla_cruces")),
-        
-        # NUEVA SECCIÓN: Sugerencia de Lanternas (Solo Policruces)
-        uiOutput(ns("ui_lanternas")),
-        
-        hr(),
-        # Detalle del cruce seleccionado
-        uiOutput(ns("detalle_cruce"))
+      # Panel de resultados con TABS para separar lógicas
+      card(
+        card_header(tagList(icon("vials"), " Recomendaciones de Mejoramiento")),
+        navset_card_pill(
+          id = ns("tabs_cruces"),
+          nav_panel(
+            title = "Biparentales",
+            icon = icon("dna"),
+            uiOutput(ns("vboxes_resultados")),
+            hr(),
+            layout_column_wrap(
+              width = 1/2,
+              actionButton(ns("btn_reg_biparental"), "Registrar Biparentales Seleccionados", class="btn-success mb-2", icon=icon("save")),
+              actionButton(ns("btn_ver_radar"), "Ver Análisis (Radar)", class="btn-info mb-2 text-white", icon=icon("chart-pie"))
+            ),
+            DT::DTOutput(ns("tabla_cruces"))
+          ),
+          nav_panel(
+            title = "Policruces",
+            icon = icon("layer-group"),
+            div(id = ns("panel_lanternas"),
+                p(tags$b("Nota: "), "El sistema utiliza un ratio de 1:2 en FLORES (mínimo 2 flores por hembra)."),
+                actionButton(ns("btn_reg_policruce"), "Registrar Policruces Seleccionados", class="btn-success mb-2", icon=icon("save")),
+                DT::DTOutput(ns("tabla_lanternas"))
+            )
+          ),
+          nav_panel(
+            title = "Registro de Cruces",
+            icon = icon("book"),
+            layout_column_wrap(
+              width = 1,
+              fill  = FALSE,
+              
+              # ── Value boxes ──────────────────────────────────────────────────────────
+              uiOutput(ns("ui_rc_stats")),
+              
+              # ── Actualizar germinación (FIJO arriba del formulario) ──────
+              card(
+                class = "border-0 shadow-sm",
+                card_header(tagList(icon("seedling"), " Actualizar Germinación"), class = "bg-light"),
+                layout_column_wrap(
+                  width = 1/3,
+                  numericInput(ns("rc_germ_id"),       "ID del cruce:", value = NA, min = 1),
+                  numericInput(ns("rc_germ_cantidad"), "Semillas germinadas:", value = NA, min = 0),
+                  div(style = "padding-top: 24px;",
+                      actionButton(ns("btn_rc_germ"), "Actualizar",
+                                   icon = icon("check"), class = "btn-primary w-100"))
+                )
+              ),
+              
+              # ── Formulario de registro ────────────────────────────────────────
+              card(
+                card_header(tagList(icon("plus-circle"), " Registrar Cruce Ejecutado")),
+                layout_column_wrap(
+                  width = 1/3,
+                  div(
+                    tags$label("Madre", class = "form-label fw-bold"),
+                    selectizeInput(ns("rc_madre"), NULL, choices = NULL, multiple = TRUE,
+                                   options = list(create = FALSE,
+                                                  placeholder = "Buscar madre..."))
+                  ),
+                  div(
+                    tags$label("Padre", class = "form-label fw-bold"),
+                    selectizeInput(ns("rc_padre"), NULL, choices = NULL, multiple = TRUE,
+                                   options = list(create = FALSE,
+                                                  placeholder = "Buscar padre..."))
+                  ),
+                  div(
+                    tags$label("Fecha del Cruce", class = "form-label fw-bold"),
+                    dateInput(ns("rc_fecha"), NULL, value = Sys.Date(),
+                              format = "dd/mm/yyyy", language = "es")
+                  )
+                ),
+                layout_column_wrap(
+                  width = 1/4,
+                  selectInput(ns("rc_tipo"), "Tipo de Cruce:",
+                              choices = c("Biparental", "Policruce")),
+                  selectInput(ns("rc_suelo"), "Suelo:",
+                              choices = c("BUENO","MAL_DRENADO","ROCOSO")),
+                  numericInput(ns("rc_anio"), "Año Cruce:",
+                               value = as.integer(format(Sys.Date(), "%Y")),
+                               min = 2000, max = 2100),
+                  numericInput(ns("rc_semillas"), "Semillas cosechadas:",
+                               value = NA, min = 0)
+                ),
+                textAreaInput(ns("rc_notas"), "Notas (opcional):",
+                              placeholder = "Observaciones del cruce...",
+                              rows = 2),
+                uiOutput(ns("ui_rc_alerta_repetido")),
+                actionButton(ns("btn_rc_guardar"), "Guardar Cruce",
+                             icon = icon("save"), class = "btn-success w-100 mt-2")
+              ),
+              
+              # ── Tabla de cruces registrados ──────────────────────────────────
+              card(
+                card_header(
+                  layout_column_wrap(
+                    width = 1/2,
+                    tags$div(
+                      class = "d-flex align-items-center",
+                      icon("table"), tags$span(" Cruces Registrados", class = "ms-2 me-3"),
+                      actionButton(ns("btn_rc_eliminar"), "Eliminar Seleccionados", class="btn-danger btn-sm me-2", icon=icon("trash")),
+                      actionButton(ns("btn_print_cruces"), "🖨️ Hoja de Cruces", class="btn-outline-primary btn-sm")
+                    ),
+
+                    layout_column_wrap(
+                      width = 1/4,
+                      selectInput(ns("rc_filter_anio"),   "Año:",    choices = c("Todos")),
+                      selectInput(ns("rc_filter_tipo"),   "Tipo:",   choices = c("Todos","Biparental","Policruce")),
+                      selectInput(ns("rc_filter_suelo"),  "Suelo:",  choices = c("Todos","BUENO","MAL_DRENADO","ROCOSO")),
+                      selectInput(ns("rc_filter_estado"), "Estado:", choices = c("Todos","EJECUTADO","GERMINADO","EN_EVALUACION"))
+                    )
+                  )
+                ),
+                DT::DTOutput(ns("tabla_rc"))
+              )
+            )
+          ),
+           nav_panel(
+            title = "Parámetros Genéticos",
+            icon = icon("cogs"),
+            card(
+              card_header("Configuración de Índice de Selección (Smith-Hazel)"),
+              layout_column_wrap(
+                width = 1/2,
+                card(
+                  card_header("Heredabilidades (h²)"),
+                  sliderInput(ns("h2_y"), "Tonelaje (Y):", min = 0.05, max = 0.8, value = 0.25, step = 0.05),
+                  sliderInput(ns("h2_q"), "Calidad (Q):", min = 0.05, max = 0.8, value = 0.45, step = 0.05),
+                  sliderInput(ns("h2_s"), "Sanidad (Resistencia):", min = 0.05, max = 0.8, value = 0.60, step = 0.05)
+                ),
+                card(
+                  card_header("Pesos Económicos ($)"),
+                  sliderInput(ns("w_y"), "Imp. Tonelaje:", min = 0, max = 1, value = 0.20, step = 0.05),
+                  sliderInput(ns("w_q"), "Imp. Calidad:", min = 0, max = 1, value = 0.60, step = 0.05),
+                  sliderInput(ns("w_s"), "Imp. Sanidad:", min = 0, max = 1, value = 0.20, step = 0.05)
+                )
+              ),
+              hr(),
+              helpText("Nota: Estos parámetros definen cómo se combinan Y y Q para formar el Valor Agroeconómico del cruce.")
+            )
+          )
+        )
       )
     )
   )
 }
 
 # --- Server del Módulo ---
-mod_cruzamientos_server <- function(id, cat_var, pedigree_var, df_ped_wide, df_act2025, df_categorias) {
+mod_cruzamientos_server <- function(id, cat_var, pedigree_var, df_ped_wide, df_act2025, df_categorias, ebvs_var = NULL, opciones_parentales = NULL) {
   moduleServer(id, function(input, output, session) {
     
     ns <- session$ns
     
-    # --- Poblar selectize SOLO con variedades del año (AllAct2025) que tienen parentesco ---
-    ids_con_pedigree <- unique(as.character(df_ped_wide$id_variedad))
+    # --- Feedback de Pesos ---
+    output$peso_feedback <- renderUI({
+      suma <- input$w_genetic + input$w_factor
+      color <- if (round(suma, 2) == 1) "success" else "danger"
+      tags$div(
+        class = paste0("text-", color),
+        style = "margin-top: -10px; margin-bottom: 15px; font-weight: bold; font-size: 0.9em;",
+        paste("Suma actual de pesos:", suma)
+      )
+    })
     
-    nombres_disponibles <- df_act2025 %>%
-      filter(variedad %in% ids_con_pedigree) %>%
-      left_join(cat_var %>% select(id_variedad, descripcion_variedad), by = c("variedad" = "id_variedad")) %>%
-      mutate(label = ifelse(is.na(descripcion_variedad), variedad, descripcion_variedad)) %>%
-      arrange(label)
+    # --- Estado Reactivo ---
+    hoja_campo_rv <- reactiveVal(NULL)
+    full_res_scoring_rv <- reactiveVal(NULL)
     
-    opciones <- setNames(nombres_disponibles$variedad,
-                         nombres_disponibles$label)
+    # --- Poblar selectize con TODAS las variedades que tienen parentesco ---
+    # Obtenemos todos los IDs (numéricos) que aparecen en el pedigree
+    ids_con_pedigree <- unique(c(
+      as.character(df_ped_wide$id_variedad),
+      as.character(df_ped_wide$id_variedad_ancestro)
+    ))
+    
+    # Usamos cat_var para tener TODOS los nombres, y evitamos el df_act2025
+    nombres_disponibles <- cat_var %>%
+      filter(id_variedad %in% ids_con_pedigree, !is.na(descripcion_variedad), descripcion_variedad != "") %>%
+      arrange(descripcion_variedad)
+    
+    # Queremos que Shiny envíe el NOMBRE (descripcion_variedad) al servidor
+    opciones <- setNames(nombres_disponibles$descripcion_variedad,
+                         nombres_disponibles$descripcion_variedad)
     
     updateSelectizeInput(session, "pool_madres",
                          choices = opciones, server = TRUE)
@@ -154,580 +337,970 @@ mod_cruzamientos_server <- function(id, cat_var, pedigree_var, df_ped_wide, df_a
     # df_categorias ya está disponible como argumento
     
     
-    # --- Calcular Matriz A (una sola vez) ---
+    # --- Matriz A Pre-calculada ---
+    # Usamos la matriz calculada en global.R para que la app no se congele
     matriz_A <- reactive({
-      # Formato requerido por AGHmatrix: data.frame con columnas Ind, Sire, Dam
-      ped_for_matrix <- df_ped_wide %>%
-        select(id_variedad, padre, madre)
-      
-      # Reemplazar NA por 0 para AGHmatrix
-      ped_for_matrix$padre[is.na(ped_for_matrix$padre)] <- 0
-      ped_for_matrix$madre[is.na(ped_for_matrix$madre)] <- 0
-      
-      tryCatch({
-        # AGHmatrix usará "0" para indicar padres faltantes si lo convertimos previamente
-        Amatrix(as.data.frame(ped_for_matrix))
-      }, error = function(e) {
-        showNotification(paste("Error en Matriz A:", e$message), type = "error")
-        NULL
-      })
+      GLOBAL_A_MATRIX
     })
+
     
 
-    # --- Lectura de Archivo de Floración ---
+    # --- Calendario de fechas con datos resaltados ---
+    fechas_rv <- reactiveVal(NULL)
+    
+    cargar_fechas_disponibles <- function() {
+      tryCatch({
+        con_f <- db_connect("data/breeding_system.db")
+        on.exit(dbDisconnect(con_f))
+        fechas <- dbGetQuery(con_f,
+          "SELECT fecha_chequeo, 
+                  MAX(dia_semana) as dia,
+                  COUNT(*) as n_vars, 
+                  SUM(CASE WHEN grc_emergencia > 0 THEN 1 ELSE 0 END) as n_emerg
+           FROM floracion_chequeos
+           GROUP BY fecha_chequeo
+           ORDER BY fecha_chequeo DESC"
+        )
+        fechas_rv(if (nrow(fechas) > 0) fechas else NULL)
+      }, error = function(e) fechas_rv(NULL))
+    }
+    
+    observe({ cargar_fechas_disponibles() }) |> bindEvent(TRUE, once = TRUE)
+    observeEvent(input$btn_refresh_fechas, { cargar_fechas_disponibles() })
+    
+    # Renderizar el calendario con airDatepickerInput
+    output$ui_calendar <- renderUI({
+      df <- fechas_rv()
+      
+      if (is.null(df) || nrow(df) == 0) {
+        return(tags$div(class = "fecha-vacia",
+          icon("satellite-dish"), " Sin evaluaciones sincronizadas aún."
+        ))
+      }
+      
+      fechas_con_datos <- as.Date(df$fecha_chequeo)
+      fecha_inicial    <- fechas_con_datos[1]  # La más reciente
+      
+      # Crear el picker con las fechas resaltadas
+      airDatepickerInput(
+        inputId          = session$ns("fecha_floracion"),
+        label            = NULL,
+        value            = fecha_inicial,
+        minDate          = min(fechas_con_datos) - 7,
+        maxDate          = max(fechas_con_datos) + 7,
+        inline           = TRUE,
+        language         = "es",
+        width            = "100%",
+        highlightedDates = fechas_con_datos,
+        dateFormat       = "yyyy-MM-dd",
+        autoClose        = TRUE
+      )
+    })
+    
+    # Info box debajo del calendario mostrando stats de la fecha seleccionada
+    output$ui_fecha_info <- renderUI({
+      req(input$fecha_floracion)
+      df <- fechas_rv()
+      if (is.null(df)) return(NULL)
+      
+      fecha_sel_str <- as.character(input$fecha_floracion)
+      fila <- df[df$fecha_chequeo == fecha_sel_str, ]
+      
+      if (nrow(fila) == 0) {
+        return(tags$div(class = "fecha-vacia",
+          icon("circle-xmark"), " Sin datos para esta fecha."
+        ))
+      }
+      
+      tags$div(
+        class = "fecha-info-box",
+        icon("calendar-check", style = "color:#16a34a"),
+        tags$span(class = "fi-date", fila$fecha_chequeo[1]),
+        tags$span(class = "fi-badge", icon("seedling"), " ", fila$n_vars[1], " vars"),
+        tags$span(class = "fi-badge", icon("leaf"),    " ", fila$n_emerg[1], " emerg")
+      )
+    })
+
+    # --- Consulta de Datos de Floración desde SQLite ---
+
     datos_floracion <- reactive({
-      req(input$modo_plan == "Operativo (Sincronización Floral)")
-      req(input$file_floracion)
+      req(input$fecha_floracion)
       
-      ext <- tools::file_ext(input$file_floracion$name)
-      df_flor <- tryCatch({
-        if (ext == "csv") {
-          read.csv(input$file_floracion$datapath, stringsAsFactors = FALSE)
-        } else if (ext %in% c("xls", "xlsx")) {
-          readxl::read_excel(input$file_floracion$datapath)
-        } else {
-          stop("Formato no soportado. Por favor suba un CSV o Excel.")
-        }
-      }, error = function(e) {
-        showNotification(paste("Error leyendo archivo:", e$message), type = "error")
-        return(NULL)
-      })
+      con <- db_connect("data/breeding_system.db")
+      on.exit(dbDisconnect(con))
       
-      req(df_flor)
+      fecha_str <- as.character(input$fecha_floracion)
       
-      # Estandarizar nombres a mayúsculas para facilitar detección
-      colnames(df_flor) <- toupper(colnames(df_flor))
+      q <- sprintf("
+        SELECT 
+          c.variedad AS VARIEDAD,
+          m.sx AS SX,
+          c.grc_emergencia AS EMF_ACTUAL,
+          m.adapt AS ADAPT
+        FROM floracion_chequeos c
+        LEFT JOIN floracion_master m 
+          ON c.num = m.num AND c.temporada = m.temporada
+        WHERE c.fecha_chequeo = '%s'
+          AND c.grc_emergencia > 0
+      ", fecha_str)
       
-      # Mapeo flexible: Si existe "DATOS_FLORACION" pero no "EMF_ACTUAL", renombrar
-      if (!("EMF_ACTUAL" %in% colnames(df_flor)) && ("DATOS_FLORACION" %in% colnames(df_flor))) {
-        df_flor <- df_flor %>% rename(EMF_ACTUAL = DATOS_FLORACION)
-      }
+      df_flor <- tryCatch(dbGetQuery(con, q), error = function(e) data.frame())
       
-      # Validar columnas requeridas
-      req_cols <- c("VARIEDAD", "SX", "EMF_ACTUAL")
-      if (!all(req_cols %in% colnames(df_flor))) {
-        msg <- paste("Faltan columnas. Requeridas:", paste(req_cols, collapse=", "), 
-                     ". Detectadas:", paste(colnames(df_flor), collapse=", "))
-        showNotification(msg, type = "error", duration = 10)
+      if (nrow(df_flor) == 0) {
+        showNotification(paste("No hay variedades con emergencia > 0 en la fecha", fecha_str), type = "warning")
         return(NULL)
       }
       
-      # Limpiar y castear
       df_flor %>%
         mutate(
-          VARIEDAD = trimws(as.character(VARIEDAD)),
-          SX = as.numeric(SX),
-          EMF_ACTUAL = as.numeric(EMF_ACTUAL)
-        ) %>%
-        filter(!is.na(VARIEDAD), !is.na(SX), !is.na(EMF_ACTUAL), EMF_ACTUAL > 0)
+          VARIEDAD   = trimws(toupper(as.character(VARIEDAD))),
+          SX         = as.numeric(SX),
+          EMF_ACTUAL = as.numeric(EMF_ACTUAL),
+          ADAPT      = if ("ADAPT" %in% colnames(.)) toupper(trimws(as.character(ADAPT))) else "UNKNOWN"
+        )
+    })
+    
+    # Categorías con limpieza de nombres
+    df_categorias_clean <- reactive({
+      req(df_categorias())
+      df_categorias() %>%
+        mutate(variedad = trimws(as.character(variedad)))
     })
     
     # --- Datos reactivos de resultados ---
     resultados <- eventReactive(input$btn_simular, {
-      req(input$modo_plan)
+      req(input$tabs_cruces == "Biparentales")
       
       A <- matriz_A()
-      validate(need(!is.null(A), "Error al calcular la Matriz de Parentesco."))
+      shiny::validate(need(!is.null(A), "Error al calcular la Matriz de Parentesco."))
       
-      ids_matriz <- rownames(A)
-      
-      if (input$modo_plan == "Teórico (Catálogo Completo)") {
-        # MODO TEÓRICO: Usar inputs manuales
-        pool_m <- input$pool_madres
-        pool_p <- input$pool_padres
-        
-        # Si no se seleccionan, asume "Todas las variedades disponibles"
-        if (is.null(pool_m)) pool_m <- ids_matriz
-        if (is.null(pool_p)) pool_p <- ids_matriz
-        
-      } else {
-        # MODO OPERATIVO: Usar archivo de floración
-        df_f <- datos_floracion()
-        req(df_f)
-        
-        # SX 3 = Madres
-        pool_m <- df_f %>% filter(SX == 3) %>% pull(VARIEDAD)
-        # SX 1, 2 = Padres
-        pool_p <- df_f %>% filter(SX %in% c(1, 2)) %>% pull(VARIEDAD)
-        
-        validate(need(length(pool_m) > 0, "No hay Hembras (SX=3) con EMF > 0 en el archivo."))
-        validate(need(length(pool_p) > 0, "No hay Machos (SX=1 o 2) con EMF > 0 en el archivo."))
-      }
-      
-      # Filtrar por IDs que estén en la matriz SOLO si vamos a calcular F
-      if (!input$solo_evitar_directos) {
-        # Diagnóstico: ¿Están las variedades en la base de datos de parentesco?
-        m_en_base <- pool_m %in% ids_matriz
-        p_en_base <- pool_p %in% ids_matriz
-        
-        # Si hay variedades en el Excel que no están en la base, avisar por notificación
-        if (input$modo_plan == "Operativo (Sincronización Floral)") {
-          missing_m <- pool_m[!m_en_base]
-          missing_p <- pool_p[!p_en_base]
-          
-          if (length(missing_m) > 0 || length(missing_p) > 0) {
-            showNotification(
-              paste("Atención: Hay variedades en el Excel (ej:", 
-                    head(c(missing_m, missing_p), 1), 
-                    ") que no tienen registro de parentesco y serán omitidas para el cálculo de F."),
-              type = "warning", duration = 10
-            )
-          }
-        }
-        
-        pool_m <- intersect(pool_m, ids_matriz)
-        pool_p <- intersect(pool_p, ids_matriz)
-      }
-      
-      # --- FILTRO DE SUELO (Aplica a ambos modos) ---
+      # Filtro estricto de variedades por suelo
+      df_f <- datos_floracion()
+      # Obtener variedades que cumplen el suelo si no es "Cualquiera"
       if (input$filtro_suelo != "Cualquiera") {
-        # Obtener lista de variedades adaptadas al suelo elegido
-        vars_adaptadas <- df_act2025 %>%
-          filter(grepl(input$filtro_suelo, toupper(adapt))) %>%
-          pull(variedad)
-        
-        # Si estamos en modo operativo, también podemos mirar la columna ADAPT del Excel si existe
-        if (input$modo_plan == "Operativo (Sincronización Floral)") {
-          df_f <- datos_floracion()
-          if ("ADAPT" %in% colnames(df_f)) {
-            vars_excel_adapt <- df_f %>%
-              filter(grepl(input$filtro_suelo, toupper(ADAPT))) %>%
-              pull(VARIEDAD)
-            vars_adaptadas <- unique(c(vars_adaptadas, vars_excel_adapt))
-          }
+        suelo_req <- toupper(trimws(input$filtro_suelo))
+        if ("ADAPT" %in% colnames(df_f)) {
+          # USAR GREPL PARA ROBUSTEZ (Igual que en policruces)
+          df_f <- df_f %>% filter(grepl(suelo_req, ADAPT))
+        } else {
+          # Fallback: buscar en categorias permitiendo valores combinados como "GOOD / CLAY"
+          variedades_suelo <- df_categorias_clean() %>%
+            filter(grepl(suelo_req, toupper(trimws(adapt)))) %>%
+            pull(variedad)
+          
+          df_f <- df_f %>% filter(VARIEDAD %in% variedades_suelo)
         }
-        
-        pool_m <- intersect(pool_m, vars_adaptadas)
-        pool_p <- intersect(pool_p, vars_adaptadas)
       }
       
-      # Validaciones finales
-      validate(
-        need(length(pool_m) >= 1, 
-             paste("No hay suficientes madres (SX=3) para el suelo:", input$filtro_suelo)),
-        need(length(pool_p) >= 1, 
-             paste("No hay suficientes padres (SX=1 o 2) para el suelo:", input$filtro_suelo))
+      pool_m <- df_f %>% filter(SX == 3) %>% pull(VARIEDAD)
+      pool_p <- df_f %>% filter(SX %in% c(1, 2)) %>% pull(VARIEDAD)
+      
+      shiny::validate(need(length(pool_m) > 0, "No hay MADRES disponibles para este suelo."))
+      shiny::validate(need(length(pool_p) > 0, "No hay PADRES disponibles para este suelo."))
+
+      # Determinar filtro de adaptación antes de llamar a la función
+      suelo_objetivo <- if(input$filtro_suelo != "Cualquiera") input$filtro_suelo else NULL
+      
+      # Calculo base usando la funcion optimizada
+      res <- sugerir_cruces(
+        matriz_A      = A,
+        ids_madres    = pool_m,
+        ids_padres    = pool_p,
+        max_f         = input$limit_f,
+        cat_var       = cat_var,
+        df_categorias = df_categorias(),
+        filtro_adapt  = suelo_objetivo
       )
       
-      # Generar combinaciones
-      comb <- expand.grid(
-        madre_id = pool_m,
-        padre_id = pool_p,
-        stringsAsFactors = FALSE
-      ) %>%
-        filter(madre_id != padre_id)
+      shiny::validate(need(nrow(res) > 0, "No hay cruces que cumplan con los criterios."))
       
-      # Si solo queremos evitar parientes directos, saltar el cálculo pesado de F
-      if (input$solo_evitar_directos) {
-        comb <- comb %>%
-          left_join(df_ped_wide %>% select(id_variedad, padre_m = padre, madre_m = madre), by = c("madre_id" = "id_variedad")) %>%
-          mutate(
-            es_pariente_directo = (padre_id == padre_m | padre_id == madre_m)
-          ) %>%
-          # IMPORTANTE: is.na(es_pariente_directo) significa que la variedad no está en la base,
-          # por lo tanto permitimos el cruce en este modo de seguridad básica.
-          filter(!es_pariente_directo | is.na(es_pariente_directo)) %>%
-          mutate(f_progenie = 0.01) # Valor dummy bajo
-      } else {
-        # Calcular F real
-        withProgress(message = "Calculando consanguinidad...", {
-          comb$f_progenie <- apply(comb, 1, function(x) {
-            tryCatch({
-              A[x[1], x[2]] / 2
-            }, error = function(e) NA_real_)
-          })
-        })
-        
-        # Filtrar por umbral de F
-        comb <- comb %>%
-          filter(!is.na(f_progenie), f_progenie <= input$limit_f)
-      }
-      
-      validate(need(nrow(comb) > 0, 
-                    "No hay cruces que cumplan con los criterios de consanguinidad/parentesco seleccionados."))
-      
-      # Agregar scores y CATEGORÍAS
-      comb <- comb %>%
-        # Cruces para Madres
-        left_join(df_categorias() %>% select(variedad, cat_m = categoria, factor_m = factor, adapt_m = adapt, 
-                                            disease_m = disease, y_m = y_score, q_m = q_score), 
-                  by = c("madre_id" = "variedad")) %>%
-        # Cruces para Padres
-        left_join(df_categorias() %>% select(variedad, cat_p = categoria, factor_p = factor, adapt_p = adapt, 
-                                            disease_p = disease, y_p = y_score, q_p = q_score), 
-                  by = c("padre_id" = "variedad"))
-      
-      # Agregar datos florales si es modo operativo
-      if (input$modo_plan == "Operativo (Sincronización Floral)") {
-        df_f <- datos_floracion()
-        comb <- comb %>%
-          left_join(df_f %>% select(VARIEDAD, emf_m = EMF_ACTUAL), by = c("madre_id" = "VARIEDAD")) %>%
-          left_join(df_f %>% select(VARIEDAD, sx_p = SX, emf_p = EMF_ACTUAL), by = c("padre_id" = "VARIEDAD")) %>%
-          mutate(
-            # Bonificación al score si es macho fuerte (SX = 1)
-            bono_macho = ifelse(sx_p == 1, 0.1, 0) # 10% de boost
-          )
-        
-        # Opcional: Eliminar combinaciones con 0 flores (ya deberían venir filtradas pero por seguridad)
-        comb <- comb %>% filter(emf_m > 0, emf_p > 0)
-          
-        validate(need(nrow(comb) > 0, "No hay cruces posibles con las flores disponibles en el archivo."))
-      }
-      
-      comb <- comb %>%
+      # 1. Preparar tabla de categorías robusta (igual que en policruces)
+      # Esto evita el error many-to-many y asegura la mejor categoría por variedad
+      cats_top <- df_categorias_clean() %>%
         mutate(
-          # Promedio de FACTOR
-          factor_avg = rowMeans(cbind(
-            ifelse(is.na(factor_m), 0, factor_m),
-            ifelse(is.na(factor_p), 0, factor_p)
-          )),
-          # F normalizado (0-1)
-          f_norm = scales::rescale(f_progenie, to = c(0, 1)),
-          # Normalizar FACTOR promedio para el score total
-          factor_norm = scales::rescale(factor_avg, to = c(0, 1)),
+          variedad  = trimws(toupper(variedad)),
+          cat_peso  = case_when(
+            grepl("C1", categoria) ~ 1,
+            grepl("C2", categoria) ~ 2,
+            grepl("C3", categoria) ~ 3,
+            grepl("C4", categoria) ~ 4,
+            TRUE                   ~ 5
+          )
+        ) %>%
+        arrange(variedad, cat_peso) %>%
+        distinct(variedad, .keep_all = TRUE)
+      
+      # 2. Renombrar y asociar metadatos usando la tabla robusta
+      res <- res %>%
+        rename(
+          madre_id = Madre_ID,
+          padre_id = Padre_ID,
+          madre_nombre = Madre,
+          padre_nombre = Padre,
+          f_progenie = F_progenie
+        ) %>%
+        mutate(
+          madre_join = trimws(toupper(madre_nombre)),
+          padre_join = trimws(toupper(padre_nombre))
+        ) %>%
+        left_join(cats_top %>% select(variedad, cat_m = categoria, factor_m = factor, adapt_m = adapt,
+                                      disease_m = disease, y_m = y, q_m = q, agro_m = agro, evf_m = evf_info),
+                  by = c("madre_join" = "variedad")) %>%
+        left_join(cats_top %>% select(variedad, cat_p = categoria, factor_p = factor, adapt_p = adapt,
+                                      disease_p = disease, y_p = y, q_p = q, agro_p = agro, evf_p = evf_info),
+                  by = c("padre_join" = "variedad"))
+      
+      # 3. Re-asociar flores (Operativo)
+      # Normalizar nombres en df_f para asegurar el join
+      df_f_clean <- datos_floracion() %>% 
+        mutate(V_JOIN = trimws(toupper(VARIEDAD))) %>%
+        distinct(V_JOIN, .keep_all = TRUE)
+
+      res <- res %>%
+        left_join(df_f_clean %>% select(V_JOIN, emf_m = EMF_ACTUAL), by = c("madre_join" = "V_JOIN")) %>%
+        left_join(df_f_clean %>% select(V_JOIN, sx_p = SX, emf_p = EMF_ACTUAL), by = c("padre_join" = "V_JOIN"))
+        
+      # 4. Asociar EBVs reales si existen
+      if (!is.null(ebvs_var) && nrow(ebvs_var) > 0) {
+        res <- res %>%
+          left_join(ebvs_var %>% select(variedad, ebv_tca_m = ebv_tca, ebv_rend_m = ebv_rend, ebv_pureza_m = ebv_pureza), by = c("madre_join" = "variedad")) %>%
+          left_join(ebvs_var %>% select(variedad, ebv_tca_p = ebv_tca, ebv_rend_p = ebv_rend, ebv_pureza_p = ebv_pureza), by = c("padre_join" = "variedad"))
+      } else {
+        res <- res %>% mutate(ebv_tca_m = NA, ebv_rend_m = NA, ebv_pureza_m = NA, ebv_tca_p = NA, ebv_rend_p = NA, ebv_pureza_p = NA)
+      }
+
+      # ── Motor de Scoring Avanzado (Reintegrado) ──
+      scored_df <- res %>%
+        mutate(
+          # Prevenir NAs en los cálculos
+          factor_m = ifelse(is.na(factor_m), 0, factor_m),
+          factor_p = ifelse(is.na(factor_p), 0, factor_p),
+          disease_m = ifelse(is.na(disease_m), 0, disease_m),
+          disease_p = ifelse(is.na(disease_p), 0, disease_p),
           
-          # --- LÓGICA DE BONOS DINÁMICA ---
-          bono_cat = case_when(
-            input$tipo_cruce == "Biparental" ~ case_when(
-              (grepl("C1", cat_m) & grepl("C1", cat_p)) ~ 0.35, # C1 x C1 prioridad máxima
-              (grepl("C1", cat_m) | grepl("C1", cat_p)) ~ 0.20,
-              (grepl("C2", cat_m) & grepl("C2", cat_p)) ~ 0.20, # Calidad Élite x Calidad Élite
-              (grepl("C6", cat_m) & grepl("C6", cat_p)) ~ 0.15, # Factor x Factor
-              TRUE ~ 0
-            ),
-            input$tipo_cruce == "Policruce" ~ case_when(
-              (cat_m != cat_p & !grepl("C5", cat_m) & !grepl("C5", cat_p)) ~ 0.25, # Mezcla de élites
-              (grepl("C3", cat_m) & grepl("C4", cat_p)) ~ 0.20, # Calidad x Rendimiento
-              (grepl("C2", cat_m) & grepl("C4", cat_p)) ~ 0.20, # VHQ x Rendimiento
-              TRUE ~ 0.10 # Variabilidad base
-            )
+          # 1. Puntuación Genética (F)
+          # F = 0 da puntaje completo, F = 0.25 reduce el puntaje
+          score_gen_f = (1 - f_progenie) * input$w_genetic,
+          
+          # ── NUEVA LÓGICA DE TIERS (CASCADA) ──
+          # Rango Élite: C1 x C1
+          # Rango V.H.Q: (C1|C2) x (C1|C2|C3)
+          # Rango Amplio: (C1|C2|C3) x (C1|C2|C3)
+          # Rango Comercial: (C3|C4) x (C4|C1|C2)
+          # Rango Exploratorio: C1 x C5 (Padre Probador)
+          # Residual: C5 x C5 y otros
+          
+          rango = case_when(
+            cat_m == "C1: Progeny Tested" & cat_p == "C1: Progeny Tested" ~ "Élite",
+            (cat_m %in% c("C1: Progeny Tested", "C2: V.H.Q") & cat_p %in% c("C1: Progeny Tested", "C2: V.H.Q", "C3: Alto Y|Q")) |
+            (cat_p %in% c("C1: Progeny Tested", "C2: V.H.Q") & cat_m %in% c("C1: Progeny Tested", "C2: V.H.Q", "C3: Alto Y|Q")) ~ "V.H.Q",
+            (cat_m %in% c("C1: Progeny Tested", "C2: V.H.Q", "C3: Alto Y|Q") & cat_p %in% c("C1: Progeny Tested", "C2: V.H.Q", "C3: Alto Y|Q")) ~ "Amplio",
+            (cat_m %in% c("C3: Alto Y|Q", "C4: Comercial") & cat_p %in% c("C4: Comercial", "C1: Progeny Tested", "C2: V.H.Q")) |
+            (cat_p %in% c("C3: Alto Y|Q", "C4: Comercial") & cat_m %in% c("C4: Comercial", "C1: Progeny Tested", "C2: V.H.Q")) ~ "Comercial",
+            (cat_m == "C1: Progeny Tested" & cat_p == "C5: Exploratorio") |
+            (cat_p == "C1: Progeny Tested" & cat_m == "C5: Exploratorio") ~ "Exploratorio (Test)",
+            TRUE ~ "Residual"
           ),
           
-          # Score total ponderado
-          score_total = input$w_genetic * (1 - f_norm) +
-                        input$w_factor * factor_norm +
-                        bono_cat
-        )
-      
-      # Sumar el bono de macho si existe (SX=1)
-      if ("bono_macho" %in% colnames(comb)) {
-        comb$score_total <- comb$score_total + comb$bono_macho
-      }
-      
-      # Nombres comerciales (Mapeo robusto por ID o por Nombre)
-      # Primero intentamos por ID
-      comb <- comb %>%
-        left_join(cat_var %>% select(id_v = id_variedad, desc_v = descripcion_variedad),
-                  by = c("madre_id" = "id_v")) %>%
-        rename(madre_nombre = desc_v) %>%
-        left_join(cat_var %>% select(id_v = id_variedad, desc_v = descripcion_variedad),
-                  by = c("padre_id" = "id_v")) %>%
-        rename(padre_nombre = desc_v)
-      
-      # Si los nombres quedaron vacíos (NA), es porque en el Excel venía el nombre en lugar del ID
-      # Intentamos el mapeo inverso (por descripcion_variedad)
-      comb <- comb %>%
-        mutate(
-          madre_nombre = ifelse(is.na(madre_nombre), as.character(madre_id), madre_nombre),
-          padre_nombre = ifelse(is.na(padre_nombre), as.character(padre_id), padre_nombre)
-        )
-      
-      comb <- comb %>%
-        arrange(desc(score_total)) %>%
-        head(input$top_n)
-      
-      comb
-    })
-    
-    # --- 3. NUEVO: Generador de Lanternas (Policruces con Fraccionamiento) ---
-    lanternas_recomendadas <- reactive({
-      req(input$tipo_cruce == "Policruce")
-      res <- resultados()
-      req(nrow(res) > 0)
-      
-      # Inventario de hembras (usamos un dataframe reactivo local para ir restando flores)
-      inv_h <- res %>%
-        group_by(madre_id) %>%
-        summarise(
-          nombre = first(madre_nombre),
-          flores_restantes = first(emf_m),
-          score_m = max(score_total)
+          rango_peso = case_when(
+            rango == "Élite" ~ 10,
+            rango == "V.H.Q" ~ 8,
+            rango == "Amplio" ~ 6,
+            rango == "Comercial" ~ 4,
+            rango == "Exploratorio (Test)" ~ 2,
+            TRUE ~ 0
+          ),
+          
+          # 2. Puntuación por Categoría (Bono Dinámico por Tier)
+          bono_cat = case_when(
+            rango == "Élite" ~ 1.15,
+            rango == "V.H.Q" ~ 1.12,
+            rango == "Amplio" ~ 1.10,
+            rango == "Comercial" ~ 1.08,
+            rango == "Exploratorio (Test)" ~ 1.05,
+            TRUE ~ 1.0
+          ),
+          
+          # Penalización C5 x C5 (No tiene sentido cruzar dos incógnitas)
+          penalty_c5 = ifelse(cat_m == "C5: Exploratorio" & cat_p == "C5: Exploratorio", -20.0, 0),
+          
+          # 3. Puntuación de Valor Cría (Índice Smith-Hazel v2 - 3 Rasgos)
+          # Invertimos las escalas para que 9-10 sea lo mejor
+          pheno_m_y = 10 - y_m,
+          pheno_m_q = 10 - q_m,
+          pheno_m_s = 10 - disease_m, # Sanidad = Resistencia
+          
+          pheno_p_y = 10 - y_p,
+          pheno_p_q = 10 - q_p,
+          pheno_p_s = 10 - disease_p,
+          
+          # Cálculo de Pesos del Índice (b)
+          b_y = input$h2_y * input$w_y,
+          b_q = input$h2_q * input$w_q,
+          b_s = input$h2_s * input$w_s,
+          
+          # Indice Individual
+          index_m = (pheno_m_y * b_y) + (pheno_m_q * b_q) + (pheno_m_s * b_s),
+          index_p = (pheno_p_y * b_y) + (pheno_p_q * b_q) + (pheno_p_s * b_s),
+          
+          # Promedio del Índice de la Progenie
+          score_agro = (((index_m + index_p) / 2) * bono_cat) * input$w_factor,
+          
+          # 4. Penalización por Sanidad Crítica (Si alguno es muy enfermo, bajamos mas)
+          penalty_extreme_disease = ifelse(disease_m > 7 | disease_p > 7, -10, 0),
+          
+          # 4. Penalización por Sanidad (Disease alto resta puntos)
+          penalty_disease = (disease_m + disease_p) * 0.05,
+          
+          # 4. Sincronización Floral (Operativo)
+          # Si faltan datos de flores, no penalizamos (penalty=0)
+          penalty_flor = ifelse(!is.na(emf_m) & !is.na(emf_p) & abs(emf_m - emf_p) > 1, 0.15, 0),
+          
+          # 5. Penalización/Bono por Desempeño Histórico (EVF)
+          # Derivado de evf_info (formato "n_sel/n_cruces")
+          tasa_m_calc = suppressWarnings({
+            partes <- strsplit(as.character(evf_m), "/")
+            sapply(partes, function(x) if (length(x) == 2 && !is.na(as.numeric(x[2])) && as.numeric(x[2]) > 0) as.numeric(x[1]) / as.numeric(x[2]) else NA_real_)
+          }),
+          n_m_calc = suppressWarnings({
+            partes <- strsplit(as.character(evf_m), "/")
+            sapply(partes, function(x) if (length(x) == 2) as.numeric(x[2]) else NA_real_)
+          }),
+          tasa_p_calc = suppressWarnings({
+            partes <- strsplit(as.character(evf_p), "/")
+            sapply(partes, function(x) if (length(x) == 2 && !is.na(as.numeric(x[2])) && as.numeric(x[2]) > 0) as.numeric(x[1]) / as.numeric(x[2]) else NA_real_)
+          }),
+          n_p_calc = suppressWarnings({
+            partes <- strsplit(as.character(evf_p), "/")
+            sapply(partes, function(x) if (length(x) == 2) as.numeric(x[2]) else NA_real_)
+          }),
+          penalty_perf = case_when(
+            (!is.na(tasa_m_calc) & tasa_m_calc < 0.2 & !is.na(n_m_calc) & n_m_calc >= 5) |
+              (!is.na(tasa_p_calc) & tasa_p_calc < 0.2 & !is.na(n_p_calc) & n_p_calc >= 5) ~ -3.0,
+            (!is.na(tasa_m_calc) & tasa_m_calc > 0.6) &
+              (!is.na(tasa_p_calc) & tasa_p_calc > 0.6) ~ 2.0,
+            TRUE ~ 0.0
+          ),
+          
+          # 6. Bono por EBV Real (Desviación vs Testigo)
+          # Recompensamos cruces donde los padres son positivamente superiores en Rendimiento y TCA
+          # Limitamos el bono a +/- 0.5 para que no abrume a la lógica categórica
+          ebv_bonus_m = pmax(pmin(coalesce(ebv_tca_m, 0) * 0.05 + coalesce(ebv_rend_m, 0) * 0.1, 0.5), -0.5),
+          ebv_bonus_p = pmax(pmin(coalesce(ebv_tca_p, 0) * 0.05 + coalesce(ebv_rend_p, 0) * 0.1, 0.5), -0.5),
+          ebv_bonus_total = (ebv_bonus_m + ebv_bonus_p),
+          
+          # Score Final Compuesto (Protección contra NAs)
+          score_total = round(
+            coalesce(score_gen_f, 0) + 
+            coalesce(score_agro, 0) +
+            coalesce(ebv_bonus_total, 0) +
+            penalty_perf + 
+            penalty_c5 -
+            coalesce(penalty_flor, 0), 
+            3
+          )
         ) %>%
-        arrange(desc(score_m))
+        # SEGURIDAD FASE 3: Filtro estricto de Consanguinidad y Scores Negativos
+        filter(f_progenie <= input$limit_f) %>%
+        # BLOQUEO ÉLITE EN ROCKY: si es rocky, bajamos el rango_peso de los Élite a 0 o los filtramos
+        mutate(
+          rango_peso = if_else(input$filtro_suelo == "ROCOSO" & rango == "Élite", -1, as.numeric(rango_peso))
+        ) %>%
+        filter(rango_peso != -1)
       
-      # Inventario de machos
-      inv_p <- res %>%
-        group_by(padre_id) %>%
-        summarise(
-          nombre = first(padre_nombre),
-          flores_restantes = first(emf_p),
-          sx = first(sx_p)
-        )
+      # Guardamos el pool completo para el generador de policruces y radar
+      full_res_scoring_rv(scored_df)
       
-      lanternas <- list()
-      cuota_h_por_lanterna <- 3 # Usamos 3 flores de cada hembra por lanterna
+      # Ordenar SOLO por Score Total (sin jerarquía de categorías)
+      # Limitar la aparición de cada variedad a máximo 3 veces en el top N
+      # para garantizar diversidad genética en las sugerencias
+      top_df <- scored_df %>%
+        arrange(desc(score_total))
       
-      # Intentar crear hasta 8 lanternas para dar opciones
-      for (i in 1:8) {
-        # Tomar las 3 hembras con más flores restantes
-        h_pool <- inv_h %>% filter(flores_restantes >= cuota_h_por_lanterna) %>% head(3)
-        if (nrow(h_pool) < 2) break # Necesitamos al menos 2 hembras para un poli
-        
-        h_ids <- h_pool$madre_id
-        h_nombres <- paste(h_pool$nombre, collapse = ", ")
-        total_flores_h_lanterna <- nrow(h_pool) * cuota_h_por_lanterna
-        
-        # Buscar machos compatibles con este grupo
-        m_compatibles <- res %>%
-          filter(madre_id %in% h_ids) %>%
-          group_by(padre_id) %>%
-          summarise(n_compat = n_distinct(madre_id)) %>%
-          filter(n_compat == nrow(h_pool)) %>%
-          left_join(inv_p, by = "padre_id") %>%
-          filter(flores_restantes > 0) %>%
-          arrange(desc(sx == 1), desc(flores_restantes)) # Priorizar machos fuertes y con stock
-        
-        if (nrow(m_compatibles) == 0) {
-          # Si no hay machos para estas 3, restamos stock a la primera para probar otra combinación
-          inv_h$flores_restantes[inv_h$madre_id == h_ids[1]] <- 0 
-          next
+      # Aplicar limitador de saturación por variedad
+      conteo_m <- table(character(0))
+      conteo_p <- table(character(0))
+      filas_seleccionadas <- integer(0)
+      max_por_variedad <- 5
+      
+      for (i in seq_len(nrow(top_df))) {
+        m <- top_df$madre_nombre[i]
+        p <- top_df$padre_nombre[i]
+        cnt_m <- if (m %in% names(conteo_m)) conteo_m[[m]] else 0
+        cnt_p <- if (p %in% names(conteo_p)) conteo_p[[p]] else 0
+        if (cnt_m < max_por_variedad & cnt_p < max_por_variedad) {
+          filas_seleccionadas <- c(filas_seleccionadas, i)
+          conteo_m[m] <- cnt_m + 1
+          conteo_p[p] <- cnt_p + 1
         }
-        
-        # Seleccionar hasta 6 machos para cubrir el ratio 2:1
-        m_seleccionados <- data.frame()
-        flores_m_acum <- 0
-        for (m_idx in 1:nrow(m_compatibles)) {
-          m_seleccionados <- rbind(m_seleccionados, m_compatibles[m_idx, ])
-          flores_m_acum <- flores_m_acum + m_compatibles$flores_restantes[m_idx]
-          if (nrow(m_seleccionados) >= 6 | flores_m_acum >= (2 * total_flores_h_lanterna)) break
-        }
-        
-        m_nombres <- paste(m_seleccionados$nombre, collapse = ", ")
-        ratio_final <- round(flores_m_acum / total_flores_h_lanterna, 1)
-        
-        # Determinar el "Tipo de Poli"
-        tipos <- c(h_pool$cat, m_seleccionados$cat)
-        tipo_poli <- case_when(
-          any(grepl("C1|C2", tipos)) & any(grepl("C4", tipos)) ~ "Calidad Élite x Rendimiento",
-          any(grepl("C1|C2", tipos)) ~ "Élite Progenie/VHQ",
-          any(grepl("C3", tipos)) & any(grepl("C4", tipos)) ~ "Combinatorio Y x Q",
-          any(grepl("C6", tipos)) ~ "Enfoque Factor Campo",
-          TRUE ~ "Exploración Comercial"
-        )
-        
-        # 2. Crear desglose para la Hoja de Campo (Formato Largo)
-        # Para cada madre: cuota fija
-        det_h <- h_pool %>%
-          mutate(
-            Lanterna_ID = input$num_lanterna_start + i - 1,
-            Rol = "HEMBRA (SX:3)",
-            Variedad = nombre,
-            Flores_a_Cortar = cuota_h_por_lanterna,
-            Objetivo = tipo_poli
-          ) %>%
-          select(Lanterna_ID, Objetivo, Rol, Variedad, Flores_a_Cortar)
-        
-        # Para los machos: distribuimos las flores
-        det_m <- m_seleccionados %>%
-          mutate(
-            Lanterna_ID = input$num_lanterna_start + i - 1,
-            Rol = paste0("MACHO (SX:", sx, ")"),
-            Variedad = nombre,
-            # Indicamos cuántas flores tiene disponibles para que el técnico decida el máximo
-            Flores_a_Cortar = flores_restantes, 
-            Objetivo = tipo_poli
-          ) %>%
-          select(Lanterna_ID, Objetivo, Rol, Variedad, Flores_a_Cortar)
-        
-        # Guardar resumen para la tabla UI
-        lanternas[[i]] <- data.frame(
-          ID = input$num_lanterna_start + i - 1,
-          Objetivo = tipo_poli,
-          Hembras = h_nombres,
-          Machos = m_nombres,
-          `Uso Flores (H:M)` = paste0(total_flores_h_lanterna, " : ", flores_m_acum),
-          `Ratio (M:H)` = ratio_final,
-          Status = ifelse(ratio_final >= 2, "Óptimo (2:1)", "Aceptable"),
-          check.names = FALSE,
-          stringsAsFactors = FALSE
-        )
-        
-        # Guardar detalle para el archivo
-        if (i == 1) {
-          hoja_campo_data <<- rbind(det_h, det_m)
-        } else {
-          hoja_campo_data <<- rbind(hoja_campo_data, det_h, det_m)
-        }
-        
-        # Restar stock usado
-        inv_h$flores_restantes[inv_h$madre_id %in% h_ids] <- inv_h$flores_restantes[inv_h$madre_id %in% h_ids] - cuota_h_por_lanterna
+        if (length(filas_seleccionadas) >= input$top_n) break
       }
       
-      if (length(lanternas) == 0) return(NULL)
-      do.call(rbind, lanternas)
+      top_df[filas_seleccionadas, ]
     })
     
-    # Objeto para persistir el detalle fuera del reactive si es necesario (o usar una lista reactiva)
-    hoja_campo_data <- NULL
-    
-    # --- UI Dinámica para Lanternas ---
-    output$ui_lanternas <- renderUI({
-      req(input$tipo_cruce == "Policruce")
-      tagList(
-        hr(),
-        box(
-          width = 12, title = "Sugerencia de Montaje de Lanternas (Policruces)",
-          status = "warning", solidHeader = TRUE, icon = icon("layer-group"),
-          p(tags$b("Nota: "), "El 'Ratio' indica cuántas flores de macho hay por cada hembra. Lo ideal es >= 2."),
-          DT::DTOutput(ns("tabla_lanternas"))
-        )
+    # --- 3. Generador de Policruces (Motor por Categorías v2) ---
+    # Lógica: Agrupa padres por suelo y categoría genética en cascada:
+    # Poli Élite → Poli V.H.Q → Poli Amplio → Poli Comercial → Poli Exploratorio
+    # Codificación SX: 1=macho, 2=bisexual(puede donar polen), 3=hembra
+    lanternas_recomendadas <- eventReactive(input$btn_simular, {
+      req(input$tabs_cruces == "Policruces")
+      
+      df_f <- datos_floracion()
+      req(!is.null(df_f), nrow(df_f) > 0)
+      
+      # IMPORTANTE: deduplicar cats (una fila por variedad) antes del join
+      # para evitar el error many-to-many que corrompe el motor de policruces
+      cats <- df_categorias_clean() %>%
+        mutate(
+          variedad  = trimws(toupper(variedad)),
+          # Asignar peso numérico para priorizar la categoría más alta
+          cat_peso  = case_when(
+            grepl("C1", categoria) ~ 1,
+            grepl("C2", categoria) ~ 2,
+            grepl("C3", categoria) ~ 3,
+            grepl("C4", categoria) ~ 4,
+            TRUE                   ~ 5
+          )
+        ) %>%
+        arrange(variedad, cat_peso) %>%
+        distinct(variedad, .keep_all = TRUE) %>%   # una sola fila por variedad (la de mayor jerarquía)
+        select(variedad, categoria, adapt, q, y, factor)
+      
+      # Enriquecer floración con categoría genética (solo cat/q/y/factor, NO adapt)
+      # ADAPT viene directamente del archivo de floración (más confiable)
+      df_enr <- df_f %>%
+        left_join(cats, by = c("VARIEDAD" = "variedad"), relationship = "many-to-one") %>%
+        mutate(
+          categoria = ifelse(is.na(categoria), "C5: Exploratorio", categoria),
+          # Priorizar ADAPT del archivo; si no existe usar el de cats
+          ADAPT     = case_when(
+            !is.na(ADAPT) & ADAPT != "" & ADAPT != "UNKNOWN" ~ ADAPT,
+            !is.na(adapt) & adapt != ""                       ~ toupper(trimws(adapt)),
+            TRUE                                               ~ "UNKNOWN"
+          ),
+          q         = as.numeric(ifelse(is.na(q), 0, q)),
+          y         = as.numeric(ifelse(is.na(y), 0, y)),
+          factor    = as.numeric(ifelse(is.na(factor), 0, factor))
+        ) %>%
+        distinct(VARIEDAD, SX, .keep_all = TRUE)
+      
+      shiny::validate(need(nrow(df_enr) >= 5, "El archivo de floración no tiene datos suficientes."))
+      
+      # Expandir padres multi-suelo: BUENO/MAL_DRENADO → una fila por cada suelo
+      df_exp <- df_enr %>%
+        rowwise() %>%
+        mutate(suelos_list = list(strsplit(ADAPT, "/")[[1]])) %>%
+        ungroup() %>%
+        unnest(suelos_list) %>%
+        rename(suelo = suelos_list) %>%
+        mutate(suelo = trimws(toupper(suelo)))
+      
+      # Aplicar filtro de suelo del usuario
+      if (input$filtro_suelo != "Cualquiera") {
+        df_exp <- df_exp %>% filter(suelo == toupper(trimws(input$filtro_suelo)))
+      }
+      
+      suelos_activos <- unique(df_exp$suelo)
+      shiny::validate(need(length(suelos_activos) > 0, "No hay padres disponibles para el suelo seleccionado."))
+      
+      # Tipos de policruce en orden de prioridad (cascade)
+      # cat_h = categorías válidas para hembras, cat_m = para machos
+      tipos_poli <- list(
+        list(nombre="Poli Élite",       cat_h=c("C1"),          cat_m=c("C1","C2"),          skip_rocky=TRUE),
+        list(nombre="Poli V.H.Q",       cat_h=c("C1","C2"),    cat_m=c("C1","C2","C3"),    skip_rocky=FALSE),
+        list(nombre="Poli Amplio",      cat_h=c("C1","C2","C3"),cat_m=c("C1","C2","C3"),  skip_rocky=FALSE),
+        list(nombre="Poli Comercial",   cat_h=c("C3","C4"),     cat_m=c("C4","C1","C2"),   skip_rocky=FALSE),
+        list(nombre="Poli Exploratorio",cat_h=NULL,              cat_m=NULL,                  skip_rocky=FALSE)
       )
+      
+      lanternas    <- list()
+      hoja_detalle <- list() # Para poblar hoja_campo_rv
+      lanterna_num <- as.integer(input$num_lanterna_start)
+      
+      for (suelo_actual in suelos_activos) {
+        df_suelo <- df_exp %>% filter(suelo == suelo_actual)
+        es_rocky <- suelo_actual == "ROCOSO"
+        
+        # SX=3: hembra, SX=1 o 2: macho/bisexual que puede donar polen
+        hembras_base <- df_suelo %>%
+          filter(SX == 3) %>%
+          arrange(desc(q), desc(y), desc(factor)) %>%
+          mutate(flores_disp = as.numeric(EMF_ACTUAL))
+        
+        machos_base <- df_suelo %>%
+          filter(SX %in% c(1, 2)) %>%
+          arrange(desc(q), desc(y), desc(factor)) %>%
+          mutate(flores_disp = as.numeric(EMF_ACTUAL))
+        
+        if (nrow(hembras_base) < 2 || nrow(machos_base) < 3) next
+        
+        hembras_usadas <- character(0)
+        
+        for (tipo in tipos_poli) {
+          if (isTRUE(tipo$skip_rocky) && es_rocky) next
+          
+          # Hembras candidatas para este tipo
+          if (!is.null(tipo$cat_h)) {
+            patron_h <- paste(tipo$cat_h, collapse = "|")
+            h_cand <- hembras_base %>%
+              filter(!(VARIEDAD %in% hembras_usadas),
+                     flores_disp >= 2,
+                     grepl(patron_h, categoria))
+          } else {
+            h_cand <- hembras_base %>%
+              filter(!(VARIEDAD %in% hembras_usadas), flores_disp >= 2)
+          }
+          
+          if (nrow(h_cand) < 2) next
+          
+          # Machos candidatos para este tipo
+          if (!is.null(tipo$cat_m)) {
+            patron_m <- paste(tipo$cat_m, collapse = "|")
+            m_cand <- machos_base %>%
+              filter(flores_disp > 0, grepl(patron_m, categoria))
+          } else {
+            m_cand <- machos_base %>% filter(flores_disp > 0)
+          }
+          
+          if (nrow(m_cand) < 3) next
+          
+          # Formar grupos mientras haya hembras disponibles
+          repeat {
+            h_disp <- h_cand %>% filter(!(VARIEDAD %in% hembras_usadas), flores_disp >= 2)
+            if (nrow(h_disp) < 2) break
+            
+            h_grupo        <- h_disp %>% head(3)
+            n_h            <- nrow(h_grupo)
+            flores_h_total <- n_h * 2          # 2 flores por hembra
+            objetivo_m     <- flores_h_total * 2  # ratio objetivo 1:2
+            
+            m_disp <- m_cand %>% filter(flores_disp > 0)
+            if (nrow(m_disp) < 3) break
+            
+            # Acumular machos hasta alcanzar el objetivo de flores
+            flores_m_acum <- 0
+            machos_sel    <- character(0)
+            for (j in seq_len(nrow(m_disp))) {
+              machos_sel    <- c(machos_sel, m_disp$VARIEDAD[j])
+              flores_m_acum <- flores_m_acum + m_disp$flores_disp[j]
+              # Romper solo si ya alcanzamos las flores Y tenemos al menos 3 machos
+              if (flores_m_acum >= objetivo_m && length(machos_sel) >= 3) break
+            }
+            
+            # Mínimo 3 machos (si no había suficientes machos disponibles en total)
+            if (length(machos_sel) < 3) break
+            
+            ratio_real <- round(flores_m_acum / flores_h_total, 1)
+            status     <- ifelse(flores_m_acum >= objetivo_m, "Óptimo", "Aceptable")
+            
+            lanternas[[length(lanternas) + 1]] <- data.frame(
+              ID          = lanterna_num,
+              Suelo       = suelo_actual,
+              Tipo        = tipo$nombre,
+              Hembras     = paste(h_grupo$VARIEDAD, collapse = ", "),
+              Machos      = paste(machos_sel, collapse = ", "),
+              `Flores H`  = flores_h_total,
+              `Flores M`  = flores_m_acum,
+              `Ratio H:M` = paste0("1:", ratio_real),
+              Status      = status,
+              check.names = FALSE, stringsAsFactors = FALSE
+            )
+            
+            # ── Poblar Hoja de Detalle (Para Hoja de Montaje) ──
+            # Hembras
+            for (hv in h_grupo$VARIEDAD) {
+              h_info <- h_grupo[h_grupo$VARIEDAD == hv, ]
+              hoja_detalle[[length(hoja_detalle) + 1]] <- data.frame(
+                Lanterna = lanterna_num,
+                Suelo    = suelo_actual,
+                Tipo     = tipo$nombre,
+                Rol      = "HEMBRA",
+                Variedad = hv,
+                Cat      = h_info$categoria,
+                Flores   = h_info$flores_disp,
+                SX       = 3,
+                stringsAsFactors = FALSE
+              )
+            }
+            # Machos
+            for (mv in machos_sel) {
+              m_info <- m_cand[m_cand$VARIEDAD == mv, ]
+              hoja_detalle[[length(hoja_detalle) + 1]] <- data.frame(
+                Lanterna = lanterna_num,
+                Suelo    = suelo_actual,
+                Tipo     = tipo$nombre,
+                Rol      = "MACHO",
+                Variedad = mv,
+                Cat      = m_info$categoria,
+                Flores   = 3, # Se usan 3 flores por lanterna
+                SX       = m_info$SX,
+                stringsAsFactors = FALSE
+              )
+            }
+            
+            lanterna_num   <- lanterna_num + 1
+            hembras_usadas <- c(hembras_usadas, h_grupo$VARIEDAD)
+            
+            # Descontar flores de machos (3 flores usadas por lanterna)
+            for (mv in machos_sel) {
+              idx <- which(m_cand$VARIEDAD == mv)
+              if (length(idx) > 0) m_cand$flores_disp[idx[1]] <- max(0, m_cand$flores_disp[idx[1]] - 3)
+            }
+          }
+        }
+      }
+      
+      # Actualizar el valor reactivo de la hoja de campo detalle
+      if (length(hoja_detalle) > 0) {
+        hoja_campo_rv(do.call(rbind, hoja_detalle))
+      } else {
+        hoja_campo_rv(NULL)
+      }
+      
+      shiny::validate(need(
+        length(lanternas) > 0,
+        paste0("No se formaron grupos de policruces. Verifica que el archivo tenga ",
+               "plantas con SX=3 (hembras) y SX=1/2 (machos) con flores disponibles.")
+      ))
+      
+      do.call(rbind, lanternas)
     })
     
     output$tabla_lanternas <- DT::renderDT({
       req(lanternas_recomendadas())
-      DT::datatable(lanternas_recomendadas(), rownames = FALSE, options = list(dom = 't'))
+      df_lt <- lanternas_recomendadas()
+      
+      DT::datatable(
+        df_lt,
+        rownames = FALSE,
+        options  = list(
+          pageLength = 20,
+          scrollX    = TRUE,
+          dom        = 'frtip'   # Sin extensión Buttons para evitar errores JS
+        ),
+        caption = "Policruces generados por tipo genético y suelo"
+      ) %>%
+        DT::formatStyle(
+          "Tipo",
+          backgroundColor = DT::styleEqual(
+            c("Poli Élite", "Poli V.H.Q", "Poli Amplio", "Poli Comercial", "Poli Exploratorio"),
+            c("#d5f5e3",   "#d6eaf8",    "#fdebd0",     "#f9ebea",         "#f4f6f7")
+          )
+        ) %>%
+        DT::formatStyle(
+          "Status",
+          color = DT::styleEqual(c("Óptimo", "Aceptable"), c("#27ae60", "#f39c12"))
+        )
     })
     
-    # --- KPIs ---
-    output$vb_total_cruces <- renderValueBox({
-      n <- if (!is.null(resultados())) nrow(resultados()) else 0
-      valueBox(n, "Cruces Sugeridos", icon = icon("dna"), color = "green")
+    # --- KPIs (bslib value_boxes) ---
+    output$vboxes_resultados <- renderUI({
+      res <- resultados()
+      n <- if (!is.null(res)) nrow(res) else 0
+      avg_f <- if (!is.null(res)) round(mean(res$f_progenie), 4) else 0
+      best <- if (!is.null(res)) round(max(res$score_total), 3) else 0
+      
+      layout_column_wrap(
+        width = 1/3,
+        value_box(
+          title = "Cruces Sugeridos",
+          value = n,
+          showcase = icon("dna"),
+          theme = "success"
+        ),
+        value_box(
+          title = "Consanguinidad Promedio",
+          value = avg_f,
+          showcase = icon("chart-line"),
+          theme = "warning"
+        ),
+        value_box(
+          title = "Mejor Score Alcanzado",
+          value = best,
+          showcase = icon("trophy"),
+          theme = "primary"
+        )
+      )
     })
     
-    output$vb_avg_f <- renderValueBox({
-      avg <- if (!is.null(resultados())) round(mean(resultados()$f_progenie), 4) else 0
-      valueBox(avg, "F Promedio", icon = icon("chart-line"), color = "yellow")
-    })
-    
-    output$vb_best_score <- renderValueBox({
-      best <- if (!is.null(resultados())) round(max(resultados()$score_total), 3) else 0
-      valueBox(best, "Mejor Score", icon = icon("trophy"), color = "blue")
-    })
-    
-    # --- Tabla de resultados ---
+    # --- Tabla de Cruces ---
     output$tabla_cruces <- DT::renderDT({
+      shiny::validate(need(
+        !is.null(input$fecha_floracion) && input$btn_simular > 0,
+        "Seleccione una fecha en el calendario y presione 'Simular Cruzamientos' para ver las recomendaciones."
+      ))
       req(resultados())
       
-      # Si es modo operativo, añadir las flores y el sexo del padre
-      if (input$modo_plan == "Operativo (Sincronización Floral)") {
-        tabla <- resultados() %>%
-          mutate(Flores = paste0(emf_m, " / ", emf_p)) %>%
-          select(
-            Madre = madre_nombre,
-            `Cat M` = cat_m,
-            Padre = padre_nombre,
-            `Cat P` = cat_p,
-            `Sexo P` = sx_p,
-            `Inventario (M/P)` = Flores,
-            `F Progenie` = f_progenie,
-            `Score Total` = score_total
-          )
-      } else {
-        # Modo teórico
-        tabla <- resultados() %>%
-          select(
-            Madre = madre_nombre,
-            `Cat M` = cat_m,
-            Padre = padre_nombre,
-            `Cat P` = cat_p,
-            `Suelo M` = adapt_m,
-            `F Progenie` = f_progenie,
-            `FACTOR M` = factor_m,
-            `FACTOR P` = factor_p,
-            `Score Total` = score_total
-          )
-      }
-      
-      tabla <- tabla %>%
+      tabla <- resultados() %>%
         mutate(
-          across(where(is.numeric), ~ round(.x, 4))
-        )
+          Flores = paste0(ifelse(is.na(emf_m), "?", emf_m), " / ",
+                          ifelse(is.na(emf_p), "?", emf_p))
+        ) %>%
+        select(
+          Madre             = madre_nombre,
+          `Cat M`           = cat_m,
+          Padre             = padre_nombre,
+          `Cat P`           = cat_p,
+          `Suelo`           = adapt_m,
+          `Sexo P`          = sx_p,
+          `Flores (M/P)`    = Flores,
+          `F Progenie`      = f_progenie,
+          `Score Total`     = score_total
+        ) %>%
+        mutate(across(where(is.numeric), ~ round(.x, 4)))
       
       DT::datatable(
         tabla,
         options = list(
           pageLength = 15,
-          scrollX = TRUE,
-          order = list(list(ncol(tabla) - 1, "desc"))  # Ordenar por la penúltima columna (Score Total) o última
+          scrollX    = TRUE,
+          order      = list(list(7, "desc")) # Ordenar por Score
         ),
-        rownames = FALSE,
-        selection = "single",
-        caption = "Cruzamientos ordenados por Score Total (mayor = mejor)"
+        rownames  = FALSE,
+        selection = "multiple",
+        caption   = "Selecciona las filas que deseas registrar o analizar."
       ) %>%
         DT::formatStyle("Score Total",
-                        background = DT::styleColorBar(range(tabla$`Score Total`), "#27ae60"),
-                        backgroundSize = "98% 88%",
-                        backgroundRepeat = "no-repeat",
+                        background         = DT::styleColorBar(range(tabla$`Score Total`), "#27ae60"),
+                        backgroundSize     = "98% 88%",
+                        backgroundRepeat   = "no-repeat",
                         backgroundPosition = "center") %>%
         DT::formatStyle("F Progenie",
-                        color = DT::styleInterval(c(0.03, 0.0625), 
+                        color = DT::styleInterval(c(0.03, 0.0625),
                                                    c("#27ae60", "#f39c12", "#e74c3c")))
     })
     
-    # --- Detalle del cruce seleccionado ---
-    output$detalle_cruce <- renderUI({
+    # --- Detalle del cruce seleccionado (Ventana Única con Radar) ---
+    observeEvent(input$btn_ver_radar, {
       req(resultados())
       sel <- input$tabla_cruces_rows_selected
-      req(sel)
+      if (length(sel) == 0) {
+        showNotification("Seleccione un cruce en la tabla para ver el radar.", type = "warning")
+        return()
+      }
+      ns <- session$ns
       
-      cruce <- resultados()[sel, ]
+      # Tomamos el primero si hay varios seleccionados
+      cruce <- resultados()[sel[1], ]
       
-      tags$div(
-        style = "background: #ecf0f1; padding: 15px; border-radius: 8px; margin-top: 10px;",
-        tags$h4(icon("flask"), "Detalle del Cruce Seleccionado",
-                style = "color: #2c3e50; font-weight: bold;"),
-        fluidRow(
-          column(6,
-                 tags$p(tags$b("Madre: "), cruce$madre_nombre, 
-                        tags$span(paste0("(ID: ", cruce$madre_id, ")"), 
-                                  style = "color: #7f8c8d;")),
-                 tags$p(tags$b("Suelo: "), tags$span(cruce$adapt_m, style="color:#d35400; font-weight:bold;")),
-                 tags$p(tags$b("Exito EVF: "), tags$span(cruce$evf_m, class="label label-info")),
-                 tags$p(tags$b("Indices: "), paste0("Y: ", round(cruce$y_m, 1), " | Q: ", round(cruce$q_m, 1))),
-                 tags$p(tags$b("FACTOR Madre: "), 
-                        round(cruce$factor_m, 2)),
-                 tags$p(tags$b("DISEASE Madre: "), 
-                        round(cruce$disease_m, 2)),
-                 tags$p(tags$b("AGRO Madre: "), 
-                        round(cruce$agro_m, 2))
+      showModal(modalDialog(
+        title = tagList(icon("flask"), paste("Análisis Detallado:", cruce$madre_nombre, "x", cruce$padre_nombre)),
+        size = "l",
+        easyClose = TRUE,
+        footer = modalButton("Cerrar"),
+        
+        div(
+          class = "container-fluid",
+          # 1. Comparativa de Padres
+          layout_column_wrap(
+            width = 1/2,
+            card(
+              card_header(class = "bg-danger text-white", tagList(icon("venus"), " Madre (Hembra)")),
+              tags$div(
+                style = "font-size: 1em;",
+                tags$p(tags$b("Nombre: "), cruce$madre_nombre),
+                tags$p(tags$b("Adaptación: "), tags$span(cruce$adapt_m, class="badge bg-warning text-dark")),
+                tags$p(tags$b("Histórico: "), tags$span(cruce$evf_m, class="badge bg-info")),
+                tags$p(tags$small(paste0("Y:", round(cruce$y_m,1), " | Q:", round(cruce$q_m,1), " | Sanidad:", round(cruce$disease_m,1))))
+              )
+            ),
+            card(
+              card_header(class = "bg-primary text-white", tagList(icon("mars"), " Padre (Macho)")),
+              tags$div(
+                style = "font-size: 1em;",
+                tags$p(tags$b("Nombre: "), cruce$padre_nombre),
+                tags$p(tags$b("Adaptación: "), tags$span(cruce$adapt_p, class="badge bg-warning text-dark")),
+                tags$p(tags$b("Histórico: "), tags$span(cruce$evf_p, class="badge bg-info")),
+                tags$p(tags$small(paste0("Y:", round(cruce$y_p,1), " | Q:", round(cruce$q_p,1), " | Sanidad:", round(cruce$disease_p,1))))
+              )
+            )
           ),
-          column(6,
-                 tags$p(tags$b("Padre: "), cruce$padre_nombre,
-                        tags$span(paste0("(ID: ", cruce$padre_id, ")"), 
-                                  style = "color: #7f8c8d;")),
-                 tags$p(tags$b("Suelo: "), tags$span(cruce$adapt_p, style="color:#d35400; font-weight:bold;")),
-                 tags$p(tags$b("Exito EVF: "), tags$span(cruce$evf_p, class="label label-info")),
-                 tags$p(tags$b("Indices: "), paste0("Y: ", round(cruce$y_p, 1), " | Q: ", round(cruce$q_p, 1))),
-                 tags$p(tags$b("FACTOR Padre: "), 
-                        round(cruce$factor_p, 2)),
-                 tags$p(tags$b("DISEASE Padre: "), 
-                        round(cruce$disease_p, 2)),
-                 tags$p(tags$b("AGRO Padre: "), 
-                        round(cruce$agro_p, 2))
+          
+          # 2. Gráfico de Radar (El "Corazón" del Análisis)
+          hr(),
+          card(
+            card_header(tagList(icon("chart-pie"), " Perfil Genético Predictivo")),
+            plotlyOutput(ns("plot_radar_progenie_modal"), height = "400px")
+          ),
+          
+          # 3. Resultados de la Progenie
+          layout_column_wrap(
+            width = 1/2,
+            value_box(
+              title = "Consanguinidad (F)",
+              value = round(cruce$f_progenie, 4),
+              showcase = icon("dna"),
+              theme = ifelse(cruce$f_progenie > 0.0625, "danger", "success")
+            ),
+            value_box(
+              title = "Score Total",
+              value = round(cruce$score_total, 3),
+              showcase = icon("chart-line"),
+              theme = "info"
+            )
           )
-        ),
-        tags$hr(),
-        tags$p(tags$b("Consanguinidad Predicha (F): "),
-               tags$span(round(cruce$f_progenie, 4),
-                         style = paste0("color: ", 
-                                        ifelse(cruce$f_progenie > 0.0625, "#e74c3c", "#27ae60"),
-                                        "; font-weight: bold; font-size: 1.2em;"))),
-        tags$p(tags$b("Score Total: "),
-               tags$span(round(cruce$score_total, 4),
-                         style = "font-weight: bold; font-size: 1.2em; color: #2980b9;"))
-      )
+        )
+      ))
+      
+      # Renderizar el gráfico de radar dentro del modal
+      output$plot_radar_progenie_modal <- renderPlotly({
+        get_axes <- function(y, q, factor, disease, f) {
+          c(
+            Tonelaje   = 10 - y,
+            Calidad    = 10 - q,
+            Agronomico = factor,
+            Sanidad    = 10 - disease,
+            Diversidad = (1 - f) * 10
+          )
+        }
+        
+        vals_m <- get_axes(cruce$y_m, cruce$q_m, cruce$factor_m, cruce$disease_m, 0)
+        vals_p <- get_axes(cruce$y_p, cruce$q_p, cruce$factor_p, cruce$disease_p, 0)
+        vals_h <- get_axes(
+          (cruce$y_m + cruce$y_p) / 2,
+          (cruce$q_m + cruce$q_p) / 2,
+          (cruce$factor_m + cruce$factor_p) / 2,
+          (cruce$disease_m + cruce$disease_p) / 2,
+          cruce$f_progenie
+        )
+        
+        ejes_n <- c(names(vals_m), names(vals_m)[1])
+        r_m <- c(as.numeric(vals_m), as.numeric(vals_m)[1])
+        r_p <- c(as.numeric(vals_p), as.numeric(vals_p)[1])
+        r_h <- c(as.numeric(vals_h), as.numeric(vals_h)[1])
+        
+        plot_ly(type = 'scatterpolar', fill = 'toself', mode = 'lines') %>%
+          add_trace(r = r_m, theta = ejes_n, name = paste("Madre:", cruce$madre_nombre), fillcolor = 'rgba(255, 0, 0, 0.1)') %>%
+          add_trace(r = r_p, theta = ejes_n, name = paste("Padre:", cruce$padre_nombre), fillcolor = 'rgba(0, 0, 255, 0.1)') %>%
+          add_trace(r = r_h, theta = ejes_n, name = "Hijo (Predicho)", fillcolor = 'rgba(0, 255, 0, 0.4)', 
+                    line = list(width = 4)) %>%
+          layout(
+            polar = list(radialaxis = list(visible = T, range = c(0, 10))),
+            margin = list(l = 50, r = 50, b = 20, t = 20)
+          )
+      })
     })
     
-    # --- Exportar CSV ---
-    # --- Exportar CSV Resumen ---
+    # --- Registro directo desde Simulador ---
+    observeEvent(input$btn_reg_biparental, {
+      req(resultados())
+      sel <- input$tabla_cruces_rows_selected
+      if (length(sel) == 0) {
+        showNotification("Seleccione al menos un cruce biparental en la tabla.", type = "warning")
+        return()
+      }
+      
+      df_sel <- resultados()[sel, ]
+      
+      tryCatch({
+        n_reg <- 0
+        for (i in seq_len(nrow(df_sel))) {
+          db_save_cruce(
+            con       = con,
+            madre     = df_sel$madre_nombre[i],
+            padre     = df_sel$padre_nombre[i],
+            programa  = "CR",
+            suelo     = input$filtro_suelo,
+            anio_cruce = as.integer(format(Sys.Date(), "%Y")),
+            fecha_cruce = as.character(Sys.Date()),
+            semillas  = NA_integer_,
+            notas     = "Registrado desde Simulador (Biparental automático)",
+            tipo      = "Biparental",
+            flores_m  = df_sel$emf_m[i],
+            flores_p  = df_sel$emf_p[i]
+          )
+          n_reg <- n_reg + 1
+        }
+        showNotification(paste0("Se registraron exitosamente ", n_reg, " cruces biparentales."), type = "message")
+      }, error = function(e) {
+        showNotification(paste("Error guardando cruces:", e$message), type = "error")
+      })
+    })
+    
+    observeEvent(input$btn_reg_policruce, {
+      req(lanternas_recomendadas())
+      sel <- input$tabla_lanternas_rows_selected
+      if (length(sel) == 0) {
+        showNotification("Seleccione al menos un policruce en la tabla.", type = "warning")
+        return()
+      }
+      
+      df_sel <- lanternas_recomendadas()[sel, ]
+      
+      tryCatch({
+        n_reg <- 0
+        for (i in seq_len(nrow(df_sel))) {
+          # Polycross formula based on minimums
+          fm <- df_sel$N_Hembras[i] * 2
+          fp <- df_sel$N_Machos[i] * 2
+          
+          db_save_cruce(
+            con       = con,
+            madre     = df_sel$Hembras[i],
+            padre     = df_sel$Machos[i],
+            programa  = "CR",
+            suelo     = input$filtro_suelo,
+            anio_cruce = as.integer(format(Sys.Date(), "%Y")),
+            fecha_cruce = as.character(Sys.Date()),
+            semillas  = NA_integer_,
+            notas     = paste0("Registrado desde Simulador (Policruce ID: ", df_sel$ID[i], ")"),
+            tipo      = "Policruce",
+            flores_m  = fm,
+            flores_p  = fp
+          )
+          n_reg <- n_reg + 1
+        }
+        showNotification(paste0("Se registraron exitosamente ", n_reg, " policruces."), type = "message")
+      }, error = function(e) {
+        showNotification(paste("Error guardando policruces:", e$message), type = "error")
+      })
+    })
+    
+    # --- Exportar Resumen Consolidado (Excel Multi-hoja) ---
     output$btn_export <- downloadHandler(
       filename = function() {
-        paste0("Cruces_Sugeridos_", format(Sys.Date(), "%Y%m%d"), ".csv")
+        paste0("REPORTE_CRUZAMIENTOS_", format(Sys.Date(), "%Y%m%d"), ".xlsx")
       },
       content = function(file) {
-        req(resultados())
-        write.csv(resultados(), file, row.names = FALSE)
+        # 1. Preparar Biparentales
+        df_bip <- resultados()
+        if (!is.null(df_bip) && nrow(df_bip) > 0) {
+          df_bip <- df_bip %>%
+            select(-contains("_join"), -contains("rango_peso")) %>%
+            rename(
+              `Rango Genético` = rango,
+              `Madre` = madre_nombre,
+              `Cat M` = cat_m,
+              `Padre` = padre_nombre,
+              `Cat P` = cat_p,
+              `Suelo` = adapt_m,
+              `Flores M` = emf_m,
+              `Flores P` = emf_p,
+              `Consanguinidad (F)` = f_progenie,
+              `Score Total` = score_total
+            )
+        } else {
+          df_bip <- data.frame(Mensaje = "No se simularon cruces biparentales")
+        }
+        
+        # 2. Preparar Policruces
+        df_pol <- lanternas_recomendadas()
+        if (!is.null(df_pol) && nrow(df_pol) > 0) {
+          df_pol <- df_pol %>%
+            select(ID, Suelo, Tipo, Hembras, Machos, `Flores H`, `Flores M`, `Ratio H:M`, Status)
+        } else {
+          df_pol <- data.frame(Mensaje = "No se simularon policruces")
+        }
+        
+        # 3. Preparar Detalle de Campo (Policruces)
+                list_export <- list(
+          "Biparentales" = df_bip,
+          "Policruces (Resumen)" = df_pol,
+          "Detalle Campo (Policruces)" = df_detalle
+        )
+        
+        openxlsx::write.xlsx(list_export, file, asTable = TRUE, tableStyle = "TableStyleMedium2")
       }
     )
     
@@ -738,21 +1311,272 @@ mod_cruzamientos_server <- function(id, cat_var, pedigree_var, df_ped_wide, df_a
       },
       content = function(file) {
         req(lanternas_recomendadas())
+        req(!is.null(hoja_campo_rv()))
         
-        # Re-generamos el detalle para asegurar que coincida con lo que se ve en pantalla
-        # (Aunque usamos la variable global, es más seguro extraerlo del reactive si lo estructuramos como lista)
-        # Por ahora, reconstruimos el formato largo desde los resultados de lanternas_recomendadas() 
-        # o usamos la lógica de guardado anterior.
-        
-        # Mejoramos la lógica de exportación para que sea limpia:
-        res <- lanternas_recomendadas()
-        
-        # Como hemos guardado el detalle en la variable hoja_campo_data durante la ejecución de lanternas_recomendadas,
-        # simplemente la usamos.
-        
-        write.csv(hoja_campo_data, file, row.names = FALSE, fileEncoding = "UTF-8")
+        write.csv(hoja_campo_rv(), file, row.names = FALSE, fileEncoding = "UTF-8")
       }
     )
+    
+    # ==========================================================================
+    # --- REGISTRO OPERATIVO DE CRUCES ---
+    # ==========================================================================
+    
+    # Poblar madre/padre desde AllAct (mismas opciones que biparentales)
+    observe({
+      ops <- if (!is.null(opciones_parentales)) opciones_parentales else opciones
+      updateSelectizeInput(session, "rc_madre",
+                           choices = ops, selected = "",
+                           server  = TRUE,
+                           options = list(
+                             create      = FALSE,
+                             placeholder = "Buscar madre...",
+                             maxOptions  = 579
+                           ))
+      updateSelectizeInput(session, "rc_padre",
+                           choices = ops, selected = "",
+                           server  = TRUE,
+                           options = list(
+                             create      = FALSE,
+                             placeholder = "Buscar padre...",
+                             maxOptions  = 579
+                           ))
+    })
+    
+    # Poblar filtro de año desde BD
+    observe({
+      cruces <- db_get_cruces(con)
+      if (nrow(cruces) == 0) return()
+      anios <- c("Todos", sort(unique(cruces$anio_cruce), decreasing = TRUE))
+      updateSelectInput(session, "rc_filter_anio", choices = anios)
+    })
+    
+    # Alerta si el cruce ya se hizo antes
+    output$ui_rc_alerta_repetido <- renderUI({
+      req(input$rc_madre, input$rc_padre)
+      if (input$rc_madre == "" || input$rc_padre == "") return(NULL)
+      n <- dbGetQuery(con,
+                      "SELECT COUNT(*) as n FROM registro_cruces WHERE madre = ? AND padre = ?",
+                      params = list(input$rc_madre, input$rc_padre))$n
+      if (n > 0) {
+        div(class = "alert alert-warning mt-2",
+            icon("triangle-exclamation"),
+            tags$b(" Cruce repetido: "),
+            sprintf("Este par %s x %s ya fue cruzado %d vez(ces) anteriormente.",
+                    input$rc_madre, input$rc_padre, n)
+        )
+      } else {
+        div(class = "alert alert-success mt-2",
+            icon("check-circle"),
+            tags$b(" Cruce nuevo: "),
+            sprintf("%s x %s no tiene antecedentes en el registro.",
+                    input$rc_madre, input$rc_padre)
+        )
+      }
+    })
+    
+    # Value boxes resumen
+    output$ui_rc_stats <- renderUI({
+      cruces <- db_get_cruces(con)
+      anio_act <- as.integer(format(Sys.Date(), "%Y"))
+      c_anio   <- cruces %>% filter(anio_cruce == anio_act)
+      bip   <- sum(c_anio$tipo == "Biparental", na.rm = TRUE)
+      poli  <- sum(c_anio$tipo == "Policruce",  na.rm = TRUE)
+      nuevos <- sum(c_anio$cruce_previo == 0, na.rm = TRUE)
+      rep    <- sum(c_anio$cruce_previo == 1, na.rm = TRUE)
+      germ   <- cruces %>% filter(!is.na(pct_germinacion))
+      pct_g  <- if (nrow(germ) > 0) paste0(round(mean(germ$pct_germinacion, na.rm=TRUE),1),"%") else "—"
+      
+      layout_column_wrap(
+        width = 1/4,
+        value_box(paste0("Biparentales ", anio_act), bip,  icon("dna"),      theme = "primary", height = "80px", showcase_layout = "left center"),
+        value_box(paste0("Policruces ",  anio_act), poli, icon("layer-group"), theme = "success", height = "80px", showcase_layout = "left center"),
+        value_box("Repetidos",           rep,   icon("rotate"),   theme = "warning", height = "80px", showcase_layout = "left center"),
+        value_box("Germ. Promedio",      pct_g, icon("seedling"), theme = "info",    height = "80px", showcase_layout = "left center")
+      )
+    })
+    
+    # Guardar cruce
+    observeEvent(input$btn_rc_guardar, {
+      req(input$rc_madre, input$rc_padre)
+      if (length(input$rc_madre) == 0 || length(input$rc_padre) == 0 || all(input$rc_madre == "") || all(input$rc_padre == "")) {
+        showNotification("Selecciona madre y padre antes de guardar.", type = "warning")
+        return()
+      }
+      tryCatch({
+        tipo_cruce <- input$rc_tipo
+        
+        if (tipo_cruce == "Policruce") {
+          # Un solo registro con todas las madres y padres concatenados
+          madres_str <- paste(input$rc_madre, collapse = ", ")
+          padres_str <- paste(input$rc_padre, collapse = ", ")
+          
+          db_save_cruce(
+            con       = con,
+            madre     = madres_str,
+            padre     = padres_str,
+            programa  = "CR",
+            suelo     = input$rc_suelo,
+            anio_cruce = input$rc_anio,
+            fecha_cruce = as.character(input$rc_fecha),
+            semillas  = {s <- input$rc_semillas; if (is.na(s)) NA_integer_ else as.integer(s)},
+            notas     = input$rc_notas,
+            tipo      = tipo_cruce
+          )
+          msg <- paste0("Policruce registrado: ", length(input$rc_madre), " madres y ", length(input$rc_padre), " padres.")
+        } else {
+          # Biparental: Crear registros individuales para todas las combinaciones
+          combinaciones <- expand.grid(madre = input$rc_madre, padre = input$rc_padre, stringsAsFactors = FALSE)
+          n_registros <- 0
+          
+          for (i in seq_len(nrow(combinaciones))) {
+            db_save_cruce(
+              con       = con,
+              madre     = combinaciones$madre[i],
+              padre     = combinaciones$padre[i],
+              programa  = "CR",
+              suelo     = input$rc_suelo,
+              anio_cruce = input$rc_anio,
+              fecha_cruce = as.character(input$rc_fecha),
+              semillas  = {s <- input$rc_semillas; if (is.na(s)) NA_integer_ else as.integer(s)},
+              notas     = input$rc_notas,
+              tipo      = tipo_cruce
+            )
+            n_registros <- n_registros + 1
+          }
+          msg <- paste0(n_registros, " cruces biparentales individuales registrados.")
+        }
+        
+        showNotification(msg, type = "message")
+        # Limpiar formulario
+        updateSelectizeInput(session, "rc_madre", selected = "")
+        updateSelectizeInput(session, "rc_padre", selected = "")
+        updateTextAreaInput(session, "rc_notas", value = "")
+        updateNumericInput(session, "rc_semillas", value = NA)
+      }, error = function(e) {
+        showNotification(paste("Error al guardar:", e$message), type = "error")
+      })
+    })
+    
+    # Variable reactiva para forzar actualización de tabla
+    rv_refresh_rc <- reactiveVal(0)
+    
+    # Datos reactivos para la tabla de cruces registrados
+    rc_filtered_data <- reactive({
+      input$btn_rc_guardar
+      input$btn_rc_germ
+      rv_refresh_rc() # Para refrescar luego de eliminar
+      
+      cruces <- db_get_cruces(con)
+      if (input$rc_filter_anio != "Todos")
+        cruces <- cruces %>% filter(anio_cruce == as.integer(input$rc_filter_anio))
+      if (input$rc_filter_tipo != "Todos")
+        cruces <- cruces %>% filter(tipo == input$rc_filter_tipo)
+      if (input$rc_filter_suelo != "Todos")
+        cruces <- cruces %>% filter(suelo == input$rc_filter_suelo)
+      if (input$rc_filter_estado != "Todos")
+        cruces <- cruces %>% filter(estado == input$rc_filter_estado)
+        
+      cruces
+    })
+    
+    # --- Eliminación de Cruces Registrados ---
+    observeEvent(input$btn_rc_eliminar, {
+      rows <- input$tabla_rc_rows_selected
+      if (length(rows) == 0) {
+        showNotification("Seleccione al menos un cruce de la tabla para eliminar.", type = "warning")
+        return()
+      }
+      
+      ask_confirmation(
+        inputId = ns("confirm_rc_delete"),
+        title = "Eliminar Cruces",
+        text = sprintf("¿Está seguro de que desea eliminar permanentemente %d cruce(s)? Esta acción no se puede deshacer.", length(rows)),
+        type = "error",
+        btn_labels = c("Cancelar", "Eliminar"),
+        btn_colors = c("#bdc3c7", "#e74c3c")
+      )
+    })
+    
+    observeEvent(input$confirm_rc_delete, {
+      req(isTRUE(input$confirm_rc_delete))
+      rows <- input$tabla_rc_rows_selected
+      req(length(rows) > 0)
+      
+      df_actual <- rc_filtered_data()
+      ids_to_delete <- df_actual$id[rows]
+      
+      tryCatch({
+        ids_str <- paste(ids_to_delete, collapse = ",")
+        DBI::dbExecute(con, sprintf("DELETE FROM registro_cruces WHERE id IN (%s)", ids_str))
+        
+        showNotification(sprintf("%d cruce(s) eliminados correctamente.", length(ids_to_delete)), type = "message")
+        
+        # Limpiar selección y refrescar tabla
+        DT::dataTableProxy(ns("tabla_rc")) %>% DT::selectRows(NULL)
+        rv_refresh_rc(rv_refresh_rc() + 1)
+      }, error = function(e) {
+        showNotification(paste("Error al eliminar cruces:", e$message), type = "error")
+      })
+    })
+    
+    # Tabla de cruces registrados
+    output$tabla_rc <- DT::renderDT({
+      cruces <- rc_filtered_data()
+      shiny::validate(need(nrow(cruces) > 0, "No hay cruces registrados aún."))
+      
+      cruces %>%
+        select(
+          ID        = id,
+          Fecha     = fecha_cruce,
+          Madre     = madre,
+          Padre     = padre,
+          Tipo      = tipo,
+          Suelo     = suelo,
+          Año       = anio_cruce,
+          Semillas  = semillas,
+          Germinadas = germinadas,
+          `Germ %`  = pct_germinacion,
+          Estado    = estado,
+          Repetido  = cruce_previo,
+          Notas     = notas
+        ) %>%
+        DT::datatable(
+          rownames  = FALSE,
+          filter    = "top",
+          selection = "multiple",
+          options   = list(pageLength = 15, scrollX = TRUE,
+                           order = list(list(0, "desc")))
+        ) %>%
+        DT::formatStyle("Estado",
+                        backgroundColor = DT::styleEqual(
+                          c("EJECUTADO",  "GERMINADO",  "EN_EVALUACION"),
+                          c("#fef9c3",    "#dcfce7",    "#dbeafe")
+                        ), fontWeight = "bold"
+        ) %>%
+        DT::formatStyle("Repetido",
+                        backgroundColor = DT::styleEqual(c(0, 1), c("#dcfce7", "#fef9c3")),
+                        color = DT::styleEqual(c(0, 1), c("#15803d", "#d97706")),
+                        fontWeight = "bold"
+        )
+    })
+    
+    # Actualizar germinación
+    observeEvent(input$btn_rc_germ, {
+      req(input$rc_germ_id, input$rc_germ_cantidad)
+      tryCatch({
+        db_update_germinacion(con,
+                              id         = as.integer(input$rc_germ_id),
+                              germinadas = as.integer(input$rc_germ_cantidad))
+        showNotification(
+          paste0("Germinación actualizada. ID ", input$rc_germ_id,
+                 ": ", input$rc_germ_cantidad, " semillas germinadas."),
+          type = "message")
+        updateNumericInput(session, "rc_germ_id",       value = NA)
+        updateNumericInput(session, "rc_germ_cantidad", value = NA)
+      }, error = function(e) {
+        showNotification(paste("Error:", e$message), type = "error")
+      })
+    })
     
     return(resultados)
   })

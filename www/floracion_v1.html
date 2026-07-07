@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CR Breeding — Floración</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f5f0e8;
+  --bg2:#ede7d9;
+  --card:#fff9f0;
+  --border:#d4c9b0;
+  --border2:#c2b49a;
+  --green:#1a5c2a;
+  --green2:#2d7a3f;
+  --green-light:#e8f5ec;
+  --amber:#b45309;
+  --amber-bg:#fff8ed;
+  --red:#b91c1c;
+  --red-bg:#fff1f1;
+  --text:#1c1009;
+  --text2:#5a4a35;
+  --text3:#9a8a75;
+  --ca:#d97706;
+  --ca-bg:#fffbeb;
+  --ca-bd:#fcd34d;
+  --em:#15803d;
+  --em-bg:#f0fdf4;
+  --em-bd:#86efac;
+  --ad:#7c3aed;
+  --ad-bg:#f5f3ff;
+  --ad-bd:#c4b5fd;
+}
+html{height:100%;font-size:16px}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+
+/* TOP BAR */
+.top-bar{background:var(--green);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.top-brand{display:flex;flex-direction:column}
+.top-brand-title{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.3px}
+.top-brand-sub{font-size:11px;color:#a7d9b4;margin-top:1px;font-family:'DM Mono',monospace}
+.conn-pill{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:4px 10px;border-radius:20px;border:1px solid}
+.conn-pill.online{color:#4ade80;border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.1)}
+.conn-pill.offline{color:#fca5a5;border-color:rgba(252,165,165,.3);background:rgba(252,165,165,.1)}
+.conn-dot{width:6px;height:6px;border-radius:50%}
+.conn-pill.online .conn-dot{background:#4ade80}
+.conn-pill.offline .conn-dot{background:#fca5a5}
+
+/* TABS */
+.tabs{display:flex;background:var(--green);border-bottom:2px solid rgba(255,255,255,.1);padding:0 8px}
+.tab{flex:1;text-align:center;padding:9px 4px;font-size:11px;font-weight:500;color:rgba(255,255,255,.5);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab i{display:block;font-size:16px;margin-bottom:3px}
+.tab.active{color:#fff;border-bottom-color:#a7d9b4}
+
+/* VIEWS */
+.view{display:none;padding:14px;flex:1}
+.view.active{display:block}
+
+/* SECTION LABEL */
+.sec-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:14px 0 7px}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px}
+.card-hdr{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+
+/* FIELDS */
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px}
+input,select{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:9px;padding:10px 12px;font-size:15px;color:var(--text);font-family:'DM Sans',sans-serif;appearance:none;-webkit-appearance:none;outline:none;transition:border-color .2s}
+input:focus,select:focus{border-color:var(--green)}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.row-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+
+/* SETUP FORM */
+.range-hint{font-size:11px;color:var(--text3);margin-top:4px}
+
+/* LOAD BTN */
+.load-btn{width:100%;background:var(--green);border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;transition:background .2s;margin-top:6px}
+.load-btn:hover{background:var(--green2)}
+.load-btn:active{transform:scale(.99)}
+.load-btn:disabled{background:var(--border2);cursor:not-allowed}
+
+/* EVALUACION */
+.eval-header{background:var(--green);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.eval-header-info{color:#fff}
+.eval-header-title{font-size:13px;font-weight:600}
+.eval-header-sub{font-size:11px;color:#a7d9b4;margin-top:2px;font-family:'DM Mono',monospace}
+.eval-progress{text-align:right}
+.eval-progress-num{font-size:18px;font-weight:600;color:#fff;font-family:'DM Mono',monospace}
+.eval-progress-label{font-size:10px;color:#a7d9b4}
+.progress-bar-wrap{background:rgba(255,255,255,.2);border-radius:4px;height:4px;margin-top:6px;overflow:hidden}
+.progress-bar-fill{height:100%;background:#a7d9b4;border-radius:4px;transition:width .3s}
+
+/* VARIEDAD ROW */
+.var-row{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:7px;transition:border-color .15s}
+.var-row.has-data{border-color:var(--green);background:var(--green-light)}
+.var-row.skipped{opacity:.5}
+.var-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.var-num{background:var(--green);color:#fff;font-size:11px;font-weight:600;font-family:'DM Mono',monospace;padding:3px 8px;border-radius:6px;flex-shrink:0;min-width:38px;text-align:center}
+.var-name{font-size:13px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.var-sx{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;flex-shrink:0}
+.sx-H{background:#fce7f3;color:#9d174d}
+.sx-M{background:#dbeafe;color:#1e40af}
+.sx-U{background:var(--bg2);color:var(--text3)}
+.var-inputs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.grc-field{display:flex;flex-direction:column;align-items:center;gap:4px}
+.grc-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:5px}
+.grc-label.ca{background:var(--ca-bg);color:var(--ca);border:1px solid var(--ca-bd)}
+.grc-label.em{background:var(--em-bg);color:var(--em);border:1px solid var(--em-bd)}
+.grc-label.ad{background:var(--ad-bg);color:var(--ad);border:1px solid var(--ad-bd)}
+.grc-input{width:100%;text-align:center;font-size:16px;font-weight:600;font-family:'DM Mono',monospace;padding:8px 4px;border-radius:8px;border:1.5px solid var(--border)}
+.grc-input.ca:focus{border-color:var(--ca)}
+.grc-input.em:focus{border-color:var(--em)}
+.grc-input.ad:focus{border-color:var(--ad)}
+
+/* FLOATING SAVE */
+.float-save{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--green);border:none;border-radius:100px;padding:14px 32px;font-size:15px;font-weight:600;color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(26,92,42,.4);transition:all .2s;z-index:50;white-space:nowrap}
+.float-save:hover{background:var(--green2);transform:translateX(-50%) translateY(-2px)}
+.float-save:active{transform:translateX(-50%) scale(.97)}
+
+/* RECORDS */
+.rec-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 13px;margin-bottom:7px}
+.rec-top{display:flex;justify-content:space-between;align-items:flex-start}
+.rec-info{flex:1}
+.rec-title{font-size:13px;font-weight:600;color:var(--text)}
+.rec-meta{font-size:11px;color:var(--text3);margin-top:2px;font-family:'DM Mono',monospace}
+.rec-pills{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.rec-pill{font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px}
+.pill-ca{background:var(--ca-bg);color:var(--ca);border:1px solid var(--ca-bd)}
+.pill-em{background:var(--em-bg);color:var(--em);border:1px solid var(--em-bd)}
+.pill-ad{background:var(--ad-bg);color:var(--ad);border:1px solid var(--ad-bd)}
+.del-btn{background:none;border:none;color:var(--border2);font-size:15px;cursor:pointer;padding:4px;transition:color .2s;flex-shrink:0}
+.del-btn:hover{color:var(--red)}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-state i{font-size:36px;display:block;margin-bottom:10px;color:var(--border2)}
+
+/* SYNC */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.stat-num{font-size:26px;font-weight:600;color:var(--green);font-family:'DM Mono',monospace}
+.stat-num.warn{color:var(--amber)}
+.stat-label{font-size:11px;color:var(--text3);margin-top:2px}
+.sync-btn{width:100%;border-radius:10px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:'DM Sans',sans-serif;border:none;transition:all .2s;margin-bottom:9px}
+.sync-primary{background:var(--green);color:#fff}
+.sync-primary:hover{background:var(--green2)}
+.sync-primary:disabled{background:var(--border);color:var(--text3);cursor:not-allowed}
+.sync-secondary{background:var(--card);border:1.5px solid var(--border);color:var(--text)}
+.sync-log{background:#fff;border:1px solid var(--border);border-radius:9px;padding:11px;margin-top:6px;min-height:50px;max-height:180px;overflow-y:auto}
+.log-line{font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);line-height:1.9}
+.log-line.ok{color:var(--green);font-weight:500}
+.log-line.err{color:var(--red);font-weight:500}
+.log-line.info{color:var(--amber)}
+
+/* CONFIG */
+.cfg-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:10px}
+.cfg-card label{font-size:13px;font-weight:500;color:var(--text);display:block;margin-bottom:7px}
+.cfg-note{font-size:11px;color:var(--text3);margin-top:5px;line-height:1.5}
+.save-cfg-btn{width:100%;background:var(--green);border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s;margin-top:6px}
+.save-cfg-btn:hover{background:var(--green2)}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(60px);opacity:0;background:var(--text);border-radius:100px;padding:10px 18px;font-size:13px;font-weight:500;color:#fff;display:flex;align-items:center;gap:7px;transition:all .28s cubic-bezier(.34,1.56,.64,1);z-index:200;white-space:nowrap;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.err{background:var(--red)}
+
+/* LINK */
+<style>
+a{color:inherit}
+</style>
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="i18n.js"></script>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-brand">
+    <div class="top-brand-title">CR Breeding</div>
+    <div class="top-brand-sub" data-i18n="flor_check">Chequeo de Floración</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button onclick="toggleLang()" style="background:none;border:1px solid rgba(74,222,128,.3);border-radius:16px;padding:3px 10px;font-size:11px;font-weight:600;color:#a7d9b4;cursor:pointer" id="lang_toggle_label">🇪🇸 ES</button>
+    <div id="connBadge" class="conn-pill offline">
+      <div class="conn-dot"></div>
+      <span id="connText" data-i18n="status_offline">Sin red</span>
+    </div>
+  </div>
+</div>
+<script>function toggleLang(){var c=i18n.lang||'es';i18n.setLang(c==='es'?'en':'es');}</script>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchView('setup')" id="tab-setup">
+    <i class="fa-solid fa-sliders"></i>Configurar
+  </div>
+  <div class="tab" onclick="switchView('eval')" id="tab-eval">
+    <i class="fa-solid fa-leaf"></i>Evaluar
+  </div>
+  <div class="tab" onclick="switchView('records')" id="tab-records">
+    <i class="fa-solid fa-list"></i>Registros
+  </div>
+  <div class="tab" onclick="switchView('sync')" id="tab-sync">
+    <i class="fa-solid fa-cloud-arrow-up"></i>Sync
+  </div>
+</div>
+
+<!-- ── SETUP ── -->
+<div class="view active" id="view-setup">
+  <div class="sec-label" data-i18n="flor_session">Sesión de Chequeo</div>
+  <div class="card">
+    <div class="card-hdr"><i class="fa-solid fa-calendar-day" style="color:var(--green)"></i> Fecha y Evaluador</div>
+    <div class="row-2">
+      <div class="field">
+        <label data-i18n="lbl_date">Fecha</label>
+        <input type="date" id="cfg_fecha">
+      </div>
+      <div class="field">
+        <label data-i18n="flor_day">Día</label>
+        <select id="cfg_dia">
+          <option value="LUNES" data-i18n="flor_monday">Lunes</option>
+          <option value="MIERCOLES" data-i18n="flor_wednesday">Miércoles</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label data-i18n="flor_evaluator_name">Nombre del Evaluador</label>
+      <input type="text" id="cfg_evaluador" placeholder="Ej: Juan Pérez" autocomplete="off">
+    </div>
+  </div>
+
+  <div class="sec-label" data-i18n="flor_section">Sección a Evaluar</div>
+  <div class="card">
+    <div class="card-hdr"><i class="fa-solid fa-map-pin" style="color:var(--green)"></i> Rango de Trabajo</div>
+    <div class="field">
+      <label data-i18n="lbl_section">Sección</label>
+      <select id="cfg_sec">
+        <option value="A">Sección A</option>
+        <option value="B">Sección B</option>
+      </select>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label data-i18n="flor_range_from">Número desde</label>
+        <input type="number" id="cfg_desde" placeholder="1" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label data-i18n="flor_range_to">Número hasta</label>
+        <input type="number" id="cfg_hasta" placeholder="412" inputmode="numeric">
+      </div>
+    </div>
+    <div class="range-hint" id="rangeHint">Cargando rango disponible...</div>
+  </div>
+
+  <div class="sec-label">Servidor</div>
+  <div class="card">
+    <div class="card-hdr"><i class="fa-solid fa-server" style="color:var(--green)"></i> URL ngrok</div>
+    <div class="field">
+      <label>URL del Servidor</label>
+      <input type="text" id="cfg_server" placeholder="xxxx.ngrok-free.dev" autocomplete="off" autocapitalize="none" spellcheck="false">
+    </div>
+    <div class="cfg-note">Sin https:// — actualizar cada día con la URL de ngrok.</div>
+  </div>
+
+  <div class="sec-label">Temporada</div>
+  <div class="card">
+    <div class="card-hdr"><i class="fa-solid fa-seedling" style="color:var(--green)"></i> Año</div>
+    <div class="field">
+      <label>Temporada</label>
+      <input type="number" id="cfg_temporada" value="2025" inputmode="numeric">
+    </div>
+  </div>
+
+  <button class="load-btn" onclick="cargarVariedades()" id="loadBtn">
+    <i class="fa-solid fa-download"></i> <span data-i18n="flor_load">Cargar Variedades y Comenzar</span>
+  </button>
+  <div style="height:20px"></div>
+</div>
+
+<!-- ── EVAL ── -->
+<div class="view" id="view-eval">
+  <div class="eval-header" id="evalHeader">
+    <div class="eval-header-info">
+      <div class="eval-header-title" id="evalTitle">—</div>
+      <div class="eval-header-sub" id="evalSub">—</div>
+    </div>
+    <div class="eval-progress">
+      <div class="eval-progress-num" id="evalCount">0/0</div>
+      <div class="eval-progress-label">evaluadas</div>
+      <div class="progress-bar-wrap" style="width:80px">
+        <div class="progress-bar-fill" id="evalBar" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="varList"></div>
+  <div style="height:70px"></div>
+
+  <button class="float-save" onclick="guardarSesion()">
+    <i class="fa-solid fa-floppy-disk"></i> Guardar Sesión (<span id="floatCount">0</span> con datos)
+  </button>
+</div>
+
+<!-- ── RECORDS ── -->
+<div class="view" id="view-records">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <span style="font-size:12px;background:var(--green-light);border:1px solid #86efac;color:var(--green);padding:4px 12px;border-radius:20px;font-weight:500">
+      <i class="fa-solid fa-database"></i> <span id="recCount">0</span> registros
+    </span>
+    <button onclick="confirmClear()" style="background:none;border:none;font-size:12px;color:var(--red);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500">
+      <i class="fa-solid fa-trash"></i> Borrar todo
+    </button>
+  </div>
+  <div id="recList"></div>
+</div>
+
+<!-- ── SYNC ── -->
+<div class="view" id="view-sync">
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="stat-num warn" id="syncPending">0</div>
+      <div class="stat-label">pendientes</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="syncDone">0</div>
+      <div class="stat-label">sincronizados</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-hdr"><i class="fa-solid fa-server" style="color:var(--green)"></i> Servidor</div>
+    <div style="font-size:12px;color:var(--text2);word-break:break-all" id="syncServerUrl">— Sin configurar —</div>
+  </div>
+
+  <button class="sync-btn sync-primary" id="syncBtn" onclick="syncData()">
+    <i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Chequeos
+  </button>
+  <button class="sync-btn sync-secondary" onclick="pingServer()">
+    <i class="fa-solid fa-satellite-dish"></i> Probar Conexión
+  </button>
+
+  <div class="sync-log" id="syncLog">
+    <div class="log-line">→ Esperando acción...</div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <i id="toastIcon" class="fa-solid fa-check"></i>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let db        = JSON.parse(localStorage.getItem('flor_db')   || '[]');
+let syncedTotal = parseInt(localStorage.getItem('flor_synced') || '0');
+let variedades  = [];  // Lista cargada del servidor
+let sesionData  = {};  // NUM → {ca, em, ad} en edición actual
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+function init() {
+  const s = getSettings();
+  if (s.fecha)      document.getElementById('cfg_fecha').value      = s.fecha;
+  else              document.getElementById('cfg_fecha').value      = new Date().toISOString().split('T')[0];
+  if (s.dia)        document.getElementById('cfg_dia').value        = s.dia;
+  if (s.evaluador)  document.getElementById('cfg_evaluador').value  = s.evaluador;
+  if (s.sec)        document.getElementById('cfg_sec').value        = s.sec;
+  if (s.desde)      document.getElementById('cfg_desde').value      = s.desde;
+  if (s.hasta)      document.getElementById('cfg_hasta').value      = s.hasta;
+  if (s.server)     document.getElementById('cfg_server').value     = s.server;
+  if (s.temporada)  document.getElementById('cfg_temporada').value  = s.temporada;
+  checkConn();
+  updateRecCount();
+  updateSyncView();
+  updateRangeHint();
+}
+
+function getSettings() {
+  return JSON.parse(localStorage.getItem('flor_settings') || '{}');
+}
+
+function saveSettings() {
+  const s = {
+    fecha:      document.getElementById('cfg_fecha').value,
+    dia:        document.getElementById('cfg_dia').value,
+    evaluador:  document.getElementById('cfg_evaluador').value.trim(),
+    sec:        document.getElementById('cfg_sec').value,
+    desde:      document.getElementById('cfg_desde').value,
+    hasta:      document.getElementById('cfg_hasta').value,
+    server:     document.getElementById('cfg_server').value.trim(),
+    temporada:  document.getElementById('cfg_temporada').value
+  };
+  localStorage.setItem('flor_settings', JSON.stringify(s));
+  return s;
+}
+
+// ── NAVIGATION ─────────────────────────────────────────────────────────────
+function switchView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  document.getElementById('tab-' + v).classList.add('active');
+  if (v === 'records') renderRecords();
+  if (v === 'sync')    updateSyncView();
+}
+
+// ── RANGE HINT ─────────────────────────────────────────────────────────────
+function updateRangeHint() {
+  const sec   = document.getElementById('cfg_sec').value;
+  const hints = { A: '1 – 412 (379 variedades)', B: '413 – 668 (201 variedades)' };
+  document.getElementById('rangeHint').textContent = 'Rango disponible: ' + (hints[sec] || '—');
+}
+document.getElementById('cfg_sec').addEventListener('change', updateRangeHint);
+
+// ── LOAD VARIEDADES ────────────────────────────────────────────────────────
+async function cargarVariedades() {
+  const s = saveSettings();
+  if (!s.evaluador) { toast('Ingresa tu nombre antes de continuar', true); return; }
+  if (!s.server)    { toast('Configura el servidor primero', true); return; }
+
+  const btn = document.getElementById('loadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cargando...';
+
+  const url    = buildURL(s.server);
+  const desde  = parseInt(s.desde) || 1;
+  const hasta  = parseInt(s.hasta) || 9999;
+
+  try {
+    const r = await fetch(`${url}/api/floracion-master?temporada=${s.temporada}`, {
+      headers: { 
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': 'Bearer SugarCane2026Secure'
+      }
+    });
+    const d = await r.json();
+
+    if (d.status[0] === 'ok' || d.status === 'ok') {
+      const raw    = typeof d.data === 'string' ? JSON.parse(d.data) : d.data;
+      const secFil = s.sec;
+      variedades   = raw
+        .filter(v => v.sec === secFil && v.num >= desde && v.num <= hasta)
+        .sort((a, b) => a.num - b.num);
+
+      if (variedades.length === 0) {
+        toast('No hay variedades en ese rango', true);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-download"></i> Cargar Variedades y Comenzar';
+        return;
+      }
+
+      sesionData = {};
+      renderEval();
+      switchView('eval');
+      toast(`${variedades.length} variedades cargadas`);
+    } else {
+      toast('Sin datos para esta temporada', true);
+    }
+  } catch(e) {
+    toast('Error de conexión: ' + e.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-download"></i> Cargar Variedades y Comenzar';
+  }
+}
+
+// ── RENDER EVAL ────────────────────────────────────────────────────────────
+function getSxLabel(sx) {
+  if (sx === 1) return { label: 'M+', cls: 'sx-M', full: 'Macho Fuerte' };
+  if (sx === 2) return { label: 'M-', cls: 'sx-M', full: 'Macho Débil' };
+  if (sx === 3) return { label: 'H', cls: 'sx-H', full: 'Hembra' };
+  return { label: '?', cls: 'sx-U', full: 'Sin sexar' };
+}
+
+function renderEval() {
+  const s       = getSettings();
+  const total   = variedades.length;
+  const conDatos = Object.keys(sesionData).filter(k => {
+    const d = sesionData[k];
+    return (d.ca > 0 || d.em > 0 || d.ad > 0);
+  }).length;
+
+  document.getElementById('evalTitle').textContent  = `Sección ${s.sec} — ${s.evaluador}`;
+  document.getElementById('evalSub').textContent    = `${s.fecha} · ${s.dia}`;
+  document.getElementById('evalCount').textContent  = `${conDatos}/${total}`;
+  document.getElementById('floatCount').textContent = conDatos;
+  document.getElementById('evalBar').style.width    = `${total > 0 ? (conDatos/total*100) : 0}%`;
+
+  const list = document.getElementById('varList');
+  list.innerHTML = variedades.map(v => {
+    const sx  = getSxLabel(v.sx);
+    const dat = sesionData[v.num] || {ca:0, em:0, ad:0};
+    const hasDatos = dat.ca > 0 || dat.em > 0 || dat.ad > 0;
+    return `
+    <div class="var-row ${hasDatos ? 'has-data' : ''}" id="row-${v.num}">
+      <div class="var-top">
+        <span class="var-num">${v.num}</span>
+        <span class="var-name">${v.variedad}</span>
+        <span class="var-sx ${sx.cls}" title="${sx.full}">${sx.label}</span>
+      </div>
+      <div class="var-inputs">
+        <div class="grc-field">
+          <span class="grc-label ca">C. Atr.</span>
+          <input class="grc-input ca" type="number" min="0" value="${dat.ca || ''}"
+            placeholder="0" inputmode="numeric"
+            onchange="updateGRC(${v.num},'ca',this.value)"
+            oninput="updateGRC(${v.num},'ca',this.value)">
+        </div>
+        <div class="grc-field">
+          <span class="grc-label ad">Adelant.</span>
+          <input class="grc-input ad" type="number" min="0" value="${dat.ad || ''}"
+            placeholder="0" inputmode="numeric"
+            onchange="updateGRC(${v.num},'ad',this.value)"
+            oninput="updateGRC(${v.num},'ad',this.value)">
+        </div>
+        <div class="grc-field">
+          <span class="grc-label em">Emerg.</span>
+          <input class="grc-input em" type="number" min="0" value="${dat.em || ''}"
+            placeholder="0" inputmode="numeric"
+            onchange="updateGRC(${v.num},'em',this.value)"
+            oninput="updateGRC(${v.num},'em',this.value)">
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateGRC(num, campo, val) {
+  if (!sesionData[num]) sesionData[num] = {ca:0, em:0, ad:0};
+  sesionData[num][campo] = parseInt(val) || 0;
+
+  const dat     = sesionData[num];
+  const hasDatos = dat.ca > 0 || dat.em > 0 || dat.ad > 0;
+  const row     = document.getElementById('row-' + num);
+  if (row) {
+    row.classList.toggle('has-data', hasDatos);
+  }
+
+  const conDatos = Object.keys(sesionData).filter(k => {
+    const d = sesionData[k];
+    return d.ca > 0 || d.em > 0 || d.ad > 0;
+  }).length;
+  const total = variedades.length;
+  document.getElementById('evalCount').textContent  = `${conDatos}/${total}`;
+  document.getElementById('floatCount').textContent = conDatos;
+  document.getElementById('evalBar').style.width    = `${total > 0 ? (conDatos/total*100) : 0}%`;
+}
+
+// ── GUARDAR SESIÓN ─────────────────────────────────────────────────────────
+function guardarSesion() {
+  const s = getSettings();
+  const registros = variedades.map(v => {
+    const dat = sesionData[v.num] || {ca:0, em:0, ad:0};
+    return {
+      temporada:      parseInt(s.temporada) || 2025,
+      fecha_chequeo:  s.fecha,
+      dia_semana:     s.dia,
+      sec:            v.sec,
+      num:            v.num,
+      variedad:       v.variedad,
+      grc_atrasado:   dat.ca || 0,
+      grc_adelantado: dat.ad || 0,
+      grc_emergencia: dat.em || 0,
+      sx:             v.sx || null,
+      pct_polen:      null,
+      evaluador:      s.evaluador,
+      notas:          null
+    };
+  });
+
+  // Solo guardar los que tienen algún dato O todos (para tener el registro completo)
+  db = db.concat(registros);
+  localStorage.setItem('flor_db', JSON.stringify(db));
+  updateRecCount();
+  updateSyncView();
+  if (navigator.vibrate) navigator.vibrate([30, 10, 30]);
+  toast(`${registros.length} registros guardados`);
+}
+
+// ── RECORDS ────────────────────────────────────────────────────────────────
+function updateRecCount() {
+  document.getElementById('recCount').textContent = db.length;
+}
+
+function renderRecords() {
+  const list = document.getElementById('recList');
+  document.getElementById('recCount').textContent = db.length;
+  if (db.length === 0) {
+    list.innerHTML = `<div class="empty-state"><i class="fa-solid fa-leaf"></i><p>Sin registros aún.<br>Evalúa una sección y guarda.</p></div>`;
+    return;
+  }
+
+  // Agrupar por fecha+sección
+  const grupos = {};
+  db.forEach(r => {
+    const key = `${r.fecha_chequeo}|${r.sec}|${r.evaluador}`;
+    if (!grupos[key]) grupos[key] = { fecha: r.fecha_chequeo, sec: r.sec, evaluador: r.evaluador, dia: r.dia_semana, items: [] };
+    grupos[key].items.push(r);
+  });
+
+  list.innerHTML = Object.values(grupos).reverse().map((g, gi) => {
+    const conDatos = g.items.filter(r => r.grc_atrasado > 0 || r.grc_emergencia > 0 || r.grc_adelantado > 0).length;
+    return `
+    <div class="rec-card">
+      <div class="rec-top">
+        <div class="rec-info">
+          <div class="rec-title">Sección ${g.sec} — ${g.evaluador}</div>
+          <div class="rec-meta">${g.fecha} · ${g.dia} · ${g.items.length} variedades</div>
+          <div class="rec-pills">
+            <span class="rec-pill pill-ca">${g.items.reduce((a,r) => a + r.grc_atrasado, 0)} CA</span>
+            <span class="rec-pill pill-ad">${g.items.reduce((a,r) => a + r.grc_adelantado, 0)} AD</span>
+            <span class="rec-pill pill-em">${g.items.reduce((a,r) => a + r.grc_emergencia, 0)} E</span>
+            <span class="rec-pill" style="background:var(--bg2);color:var(--text2)">${conDatos} con flor</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function confirmClear() {
+  if (db.length === 0) { toast('No hay registros que borrar', true); return; }
+  if (confirm(`¿Borrar los ${db.length} registros?\nEsta acción no se puede deshacer.`)) {
+    db = [];
+    localStorage.setItem('flor_db', JSON.stringify(db));
+    updateRecCount();
+    renderRecords();
+    toast('Memoria limpiada');
+  }
+}
+
+// ── SYNC ───────────────────────────────────────────────────────────────────
+function updateSyncView() {
+  document.getElementById('syncPending').textContent = db.length;
+  document.getElementById('syncDone').textContent    = syncedTotal;
+  const s = getSettings();
+  document.getElementById('syncServerUrl').textContent = s.server || '— Sin configurar —';
+}
+
+function buildURL(raw) {
+  if (!raw) return '';
+  raw = raw.trim();
+  if (raw.startsWith('http')) return raw;
+  return raw.includes('ngrok') ? 'https://' + raw : 'http://' + raw;
+}
+
+function addLog(msg, cls = '') {
+  const log = document.getElementById('syncLog');
+  const div = document.createElement('div');
+  div.className = 'log-line ' + cls;
+  div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function pingServer() {
+  const s = getSettings();
+  if (!s.server) { toast('Configura el servidor en Setup', true); return; }
+  const url = buildURL(s.server);
+  addLog('Conectando a ' + s.server + '...', 'info');
+  try {
+    const r = await fetch(url + '/api/ping', {
+      signal: AbortSignal.timeout(5000),
+      headers: { 
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': 'Bearer SugarCane2026Secure'
+      }
+    });
+    if (r.ok) { const d = await r.json(); addLog('✓ ' + (d.message?.[0] || d.message), 'ok'); toast('Servidor en línea'); }
+    else { addLog('✗ Error ' + r.status, 'err'); }
+  } catch(e) { addLog('✗ ' + e.message, 'err'); toast('Sin conexión', true); }
+}
+
+async function syncData() {
+  if (db.length === 0) { toast('No hay registros pendientes', true); return; }
+  const s = getSettings();
+  if (!s.server) { toast('Configura el servidor primero', true); return; }
+  const url = buildURL(s.server);
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sincronizando...';
+  addLog(`Enviando ${db.length} registro(s)...`, 'info');
+  try {
+    const r = await fetch(url + '/api/floracion-sync', {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': 'Bearer SugarCane2026Secure'
+      },
+      body: JSON.stringify(db),
+      signal: AbortSignal.timeout(20000)
+    });
+    const d = await r.json();
+    const status = Array.isArray(d.status) ? d.status[0] : d.status;
+    if (r.ok && status === 'ok') {
+      const count = Array.isArray(d.registros_sincronizados) ? d.registros_sincronizados[0] : d.registros_sincronizados;
+      syncedTotal += db.length;
+      localStorage.setItem('flor_synced', syncedTotal);
+      addLog('✓ ' + (Array.isArray(d.message) ? d.message[0] : d.message), 'ok');
+      db = []; localStorage.setItem('flor_db', JSON.stringify(db));
+      updateRecCount(); updateSyncView();
+      toast(count + ' registros sincronizados');
+    } else {
+      addLog('✗ ' + (Array.isArray(d.message) ? d.message[0] : d.message), 'err');
+      toast('Error del servidor', true);
+    }
+  } catch(e) {
+    addLog('✗ ' + e.message, 'err');
+    toast('Sin conexión', true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar Chequeos';
+  }
+}
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function toast(msg, isErr = false) {
+  const el = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').className = isErr ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-check';
+  el.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toast', 2800);
+}
+
+function checkConn() {
+  const b = document.getElementById('connBadge');
+  const t = document.getElementById('connText');
+  if (navigator.onLine) { b.className = 'conn-pill online'; t.textContent = 'En línea'; }
+  else                  { b.className = 'conn-pill offline'; t.textContent = 'Sin red'; }
+}
+
+window.addEventListener('online',  checkConn);
+window.addEventListener('offline', checkConn);
+
+init();
+</script>
+</body>
+</html>

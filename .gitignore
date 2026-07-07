@@ -1,0 +1,42 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+
+# Secrets / local env
+.Renviron
+.env
+
+# renv: only track lockfile + activation script, not the local library
+renv/library/
+renv/staging/
+renv/local/
+renv/sandbox/
+renv/python/
+
+# Generated / runtime databases and backups
+database.sqlite
+*.sqlite-journal
+sqlite.zip
+backups/
+data/
+temp_excel/
+
+# Personal scratch scripts (not part of the app)
+scratch/
+
+# Third-party binaries (fetch locally, don't vendor in git)
+sqlite_tools/
+
+# Raw data exports / spreadsheets (not source code)
+*.xlsx
+*.xls
+*.ods
+CAT_VARIEDADES.txt
+PARENTESCO_VARIEDADES.txt
+ensayos_ajustados_2025.csv
+missing_translations.csv
+Herramientas de Verificacion.txt
+
+# Editor/session backups
+*.bak

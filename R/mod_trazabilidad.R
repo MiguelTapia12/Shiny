@@ -7,22 +7,24 @@ mod_trazabilidad_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
-    fluidRow(
-      box(
-        width = 12, status = "primary", solidHeader = TRUE,
-        title = "Explorador de Trazabilidad Genetica",
-        icon = icon("history"),
-        column(8, 
-               selectizeInput(ns("clon_search"), "ID del Clon / Variedad:", 
-                              choices = NULL, 
-                              options = list(placeholder = "Ej: 630-1, CR261001...", 
-                                             maxOptions = 50))),
-        column(4, 
-               actionButton(ns("btn_trace"), "Rastrear Historia", 
-                            class = "btn-primary btn-block", 
-                            style = "margin-top: 25px;",
-                            icon = icon("search-location")),
-               uiOutput(ns("download_btn_ui"))
+    card(
+      card_header(tagList(icon("history"), tags$span(`data-i18n`="trz_title", " Explorador de Trazabilidad Genética"))),
+      layout_column_wrap(
+        width = 1,
+        layout_column_wrap(
+          width = 1/2,
+          selectizeInput(ns("clon_search"), tags$span(`data-i18n`="lbl_clone_id", "ID del Clon / Variedad:"), 
+                         choices = NULL, 
+                         options = list(placeholder = "Ej: 630-1, CR261001...", 
+                                        maxOptions = 100,
+                                        searchField = c("value", "label"))),
+          tags$div(
+            class = "d-flex flex-column gap-2",
+            actionButton(ns("btn_trace"), tags$span(`data-i18n`="btn_trace_history", "Rastrear Historia"), 
+                         class = "btn-primary w-100", 
+                         icon = icon("search-location")),
+            uiOutput(ns("download_btn_ui"))
+          )
         )
       )
     ),
@@ -31,7 +33,7 @@ mod_trazabilidad_ui <- function(id) {
 }
 
 # --- Server del Modulo ---
-mod_trazabilidad_server <- function(id, cat_var, pedigree_var, df_categorias) {
+mod_trazabilidad_server <- function(id, cat_var, pedigree_var, df_categorias, con) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -130,13 +132,14 @@ mod_trazabilidad_server <- function(id, cat_var, pedigree_var, df_categorias) {
             error = function(e) NULL
           )
         } else {
-          # Si buscamos por nombre de variedad CR, necesitamos mapear al clon primero (ya lo hicimos arriba)
+          # Búsqueda por nombre directo (ej. variedad testigo o variedad élite importada)
+          # Tratamos de buscar donde el campo cruce sea igual al id_query
           q <- sprintf(
             "SELECT ? as etapa, anio_seleccion AS anio, suelo, brix, vigor FROM %s WHERE cruce = ?",
             table_name
           )
           res <- tryCatch(
-            dbGetQuery(con, q, params = list(toupper(st), "N/A")),
+            dbGetQuery(con, q, params = list(toupper(st), id_query)),
             error = function(e) NULL
           )
         }
@@ -163,9 +166,11 @@ mod_trazabilidad_server <- function(id, cat_var, pedigree_var, df_categorias) {
       d <- trace_data()
       
       tagList(
-        fluidRow(
-          box(
-            width = 4, title = "Origen (Pedigri)", status = "info", solidHeader = TRUE,
+      tagList(
+        layout_column_wrap(
+          width = 1/2,
+          card(
+            card_header(tagList(icon("dna"), " Origen (Pedigrí)")),
             if(nrow(d$parents) > 0) {
               tags$ul(
                 lapply(1:nrow(d$parents), function(i) {
@@ -173,48 +178,58 @@ mod_trazabilidad_server <- function(id, cat_var, pedigree_var, df_categorias) {
                 })
               )
             } else {
-              p("No se registran padres en la base de datos.")
+              p("No se registran padres en la base de datos.", class = "text-muted")
             }
           ),
-          box(
-            width = 8, title = "Estatus Actual", status = "success", solidHeader = TRUE,
+          card(
+            card_header(tagList(icon("info-circle"), " Estatus Actual")),
             if(nrow(d$current) > 0) {
-              fluidRow(
-                valueBox(d$current$categoria, "Categoria", icon = icon("dna"), width = 6, color = "green"),
-                valueBox(d$current$evf_info, "Exito EVF", icon = icon("vial"), width = 6, color = "blue")
+              layout_column_wrap(
+                width = 1/2,
+                value_box(
+                  title = "Categoría",
+                  value = d$current$categoria,
+                  showcase = icon("dna"),
+                  theme = "success"
+                ),
+                value_box(
+                  title = "Éxito EVF",
+                  value = d$current$evf_info,
+                  showcase = icon("vial"),
+                  theme = "primary"
+                )
               )
             } else {
-              p("Variedad no activa en el ciclo actual.")
+              p("Variedad no activa en el ciclo actual.", class = "text-muted")
             }
           )
         ),
         
-        fluidRow(
-          box(
-            width = 12, title = "Progreso Real en el Pipeline de Selección", status = "warning", solidHeader = TRUE,
-            if(nrow(d$hist_sel) > 0) {
-              fluidRow(
-                column(7, plotOutput(ns("plot_history_sel"), height = "350px")),
-                column(5, 
-                       h5(tags$b("Detalle por Etapa y Suelo")),
-                       DT::DTOutput(ns("table_history_sel")))
+        card(
+          card_header(tagList(icon("chart-line"), " Progreso Real en el Pipeline de Selección")),
+          if(nrow(d$hist_sel) > 0) {
+            layout_column_wrap(
+              width = 1/2,
+              plotOutput(ns("plot_history_sel"), height = "350px"),
+              card(
+                card_header("Detalle por Etapa"),
+                DT::DTOutput(ns("table_history_sel"))
               )
-            } else {
-              p("No hay registros de avance real en la base de datos para este clon.")
-            }
-          )
+            )
+          } else {
+            p("No hay registros de avance real en la base de datos para este clon.", class = "text-muted")
+          }
         ),
         
-        fluidRow(
-          box(
-            width = 12, title = "Hijos (Cruces donde es progenitor)", status = "danger", solidHeader = TRUE,
-            if(nrow(d$hijos) > 0) {
-              DT::DTOutput(ns("table_hijos"))
-            } else {
-              p("No se registran hijos para este clon.")
-            }
-          )
+        card(
+          card_header(tagList(icon("sitemap"), " Hijos (Cruces donde es progenitor)")),
+          if(nrow(d$hijos) > 0) {
+            DT::DTOutput(ns("table_hijos"))
+          } else {
+            p("No se registran hijos para este clon.", class = "text-muted")
+          }
         )
+      )
       )
     })
     
@@ -238,28 +253,7 @@ mod_trazabilidad_server <- function(id, cat_var, pedigree_var, df_categorias) {
       DT::datatable(trace_data()$hist_sel, options = list(dom = 't'), rownames = FALSE)
     })
     
-    output$plot_history_rend <- renderPlot({
-      req(trace_data()$hist_rend)
-      df <- trace_data()$hist_rend
-      if (nrow(df) == 0) return(NULL)
-      
-      df_long <- df %>%
-        select(anio, tca, rend, taa) %>%
-        pivot_longer(cols = -anio, names_to = "Metrica", values_to = "Valor")
-      
-      ggplot(df_long, aes(x = anio, y = Valor, color = Metrica, group = Metrica)) +
-        geom_line(linewidth = 1) +
-        geom_point(size = 3) +
-        facet_wrap(~Metrica, scales = "free_y") +
-        theme_minimal() +
-        scale_color_brewer(palette = "Set1")
-    })
-    
-    output$table_history_rend <- DT::renderDT({
-      req(trace_data()$hist_rend)
-      DT::datatable(trace_data()$hist_rend %>% select(anio, localidad, tca, rend, taa),
-                    options = list(pageLength = 5, dom = 'tp'), rownames = FALSE)
-    })
+
     
     output$table_hijos <- DT::renderDT({
       req(trace_data()$hijos)

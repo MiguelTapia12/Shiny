@@ -1,0 +1,87 @@
+---
+title: "Reporte Gerencial - CR Breeding"
+author: "Generado Automáticamente"
+date: "`r Sys.Date()`"
+output: pdf_document
+params:
+  semillas: 0
+  volumen: 0
+  cruces: 0
+  programa: "Todos"
+  suelo: "Todos"
+  anio: "Todos"
+  datos_funnel: NULL
+  datos_familias: NULL
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(ggplot2)
+library(dplyr)
+```
+
+## Resumen Ejecutivo
+
+Este informe presenta el estado actual del programa de mejoramiento genético. Se han aplicado los siguientes filtros de análisis:
+
+* **Año de Evaluación:** `r params$anio`
+* **Programa:** `r params$programa`
+* **Tipo de Suelo:** `r params$suelo`
+
+### Indicadores Clave (KPIs)
+
+* **Inventario de Banco de Fuzz:** `r format(params$semillas, big.mark = ",")` semillas.
+* **Volumen en Selección (ST1 - ST5):** `r format(params$volumen, big.mark = ",")` clones activos.
+* **Cruces Históricos Realizados:** `r format(params$cruces, big.mark = ",")` cruces.
+
+El inventario de semillas asegura la base genética para los próximos años, mientras que el volumen en selección indica la magnitud del trabajo operativo en campo actualmente.
+
+---
+
+## Embudo de Selección (Pipeline)
+
+El siguiente gráfico ilustra la presión de selección aplicada a lo largo de las 5 etapas del programa (ST1 a ST5). Una caída pronunciada entre ST1 y ST2 es esperada, ya que representa la primera gran purga de individuos no aptos.
+
+```{r funnel-plot, fig.height=4, fig.width=6, fig.align="center"}
+df <- params$datos_funnel
+if(!is.null(df) && nrow(df) > 0) {
+  resumen <- df %>%
+    mutate(estado = factor(estado, levels = c("ST1", "ST2", "ST3", "ST4", "ST5"))) %>%
+    group_by(estado) %>%
+    summarise(cantidad = n(), .groups = "drop") %>%
+    arrange(estado)
+    
+  ggplot(resumen, aes(x = estado, y = cantidad, fill = estado)) +
+    geom_bar(stat = "identity", width = 0.6) +
+    geom_text(aes(label = cantidad), vjust = -0.5) +
+    scale_fill_manual(values = c("#0b5c2e", "#16a34a", "#22c55e", "#4ade80", "#86efac")) +
+    theme_minimal() +
+    labs(x = "Estado de Selección", y = "Número de Clones", title = "Clones Vivos por Estado") +
+    theme(legend.position = "none")
+} else {
+  cat("No hay datos disponibles para el embudo bajo los filtros actuales.")
+}
+```
+
+---
+
+## Top 10 Familias Exitosas
+
+El gráfico a continuación destaca las 10 familias que han producido la mayor cantidad de clones que lograron sobrevivir hasta las etapas avanzadas (ST2, ST3, ST4 y ST5). Estas familias demuestran una genética superior o una mejor adaptabilidad.
+
+```{r familias-plot, fig.height=4, fig.width=6, fig.align="center"}
+df_fam <- params$datos_familias
+if(!is.null(df_fam) && nrow(df_fam) > 0) {
+  ggplot(df_fam, aes(x = reorder(familia, clones_vivos), y = clones_vivos)) +
+    geom_bar(stat = "identity", fill = "#16a34a", width = 0.6) +
+    geom_text(aes(label = clones_vivos), hjust = -0.2) +
+    coord_flip() +
+    theme_minimal() +
+    labs(x = "Familia", y = "Clones Vivos en ST2+", title = "Mejores Familias (Mayor Supervivencia)")
+} else {
+  cat("No hay datos disponibles de familias exitosas bajo los filtros actuales.")
+}
+```
+
+---
+*Fin del reporte.*

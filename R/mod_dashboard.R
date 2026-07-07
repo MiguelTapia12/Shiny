@@ -1,205 +1,514 @@
 # ==============================================================================
-# MOD_DASHBOARD.R — Módulo Shiny: Dashboard de Éxito Genético
-# Pipeline de Selección Genética — Central Romana
+# MOD_DASHBOARD.R — Dashboard de Campaña Activa
+# Pipeline de Selección Genética — Central Romana v3.0
 # ==============================================================================
 
-# --- UI del Módulo ---
+# --- UI ---
 mod_dashboard_ui <- function(id) {
   ns <- NS(id)
   
-  tagList(
-    fluidRow(
-      column(12,
-        div(style = "background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);",
-          h2("Análisis del Éxito Genético", style = "margin-top: 0; color: #1a472a; font-weight: bold;"),
-          p("Monitoreo en tiempo real del pipeline de selección y desempeño de progenitores.")
-        )
-      )
-    ),
-    
-    fluidRow(
-      valueBoxOutput(ns("vbox_familias"), width = 3),
-      valueBoxOutput(ns("vbox_clones"), width = 3),
-      valueBoxOutput(ns("vbox_tasa"), width = 3),
-      valueBoxOutput(ns("vbox_variedades"), width = 3)
-    ),
-    
-    fluidRow(
-      # Columna Izquierda: Embudo y Distribución
-      column(7,
-        box(
-          width = 12, title = "Embudo de Selección (Pipeline)", 
-          status = "success", solidHeader = TRUE,
-          plotlyOutput(ns("plot_funnel_pipeline"), height = "400px"),
-          footer = "Muestra la cantidad de clones únicos que han alcanzado cada etapa."
-        ),
-        box(
-          width = 12, title = "Distribución de Calidad (Brix por Estado)", 
-          status = "primary", solidHeader = TRUE,
-          plotlyOutput(ns("plot_brix_dist"), height = "350px")
+  div(class = "p-3",
+    tagList(
+      # ── Encabezado ────────────────────────────────────────────────────────
+      fluidRow(
+        column(12,
+          div(
+            class = "d-flex justify-content-between align-items-center mb-3",
+            div(
+              h2("\U0001F3AF ", tags$span(`data-i18n`="dash_title", "Dashboard de Campaña"), class = "m-0 fw-bold text-success"),
+              p(tags$span(`data-i18n`="dash_subtitle", "Progreso en tiempo real de la campaña de selección."), 
+                class = "text-muted mb-0", style = "font-size:0.9em;")
+            ),
+            div(
+              class = "d-flex gap-2",
+              downloadButton(ns("descargar_csv"), tags$span(`data-i18n`="dash_export_csv", "Exportar CSV"), 
+                             class = "btn btn-outline-success btn-sm")
+            )
+          )
         )
       ),
       
-      # Columna Derecha: Rankings
-      column(5,
-        box(
-          width = 12, title = "Top 10 Padres por Éxito de Progenie", 
-          status = "info", solidHeader = TRUE,
-          plotlyOutput(ns("plot_top_parents"), height = "400px"),
-          footer = "Padres con mayor % de hijos promocionados a estados avanzados (Est 3+)."
+      # ── Filtros ────────────────────────────────────────────────────────────
+      fluidRow(
+        column(12,
+          card(
+            card_header(
+              tags$b(icon("filter"), tags$span(`data-i18n`="dash_filters", " Filtros de Campaña")),
+              class = "bg-light text-dark"
+            ),
+            card_body(
+              fluidRow(
+                column(4,
+                  selectInput(
+                    ns("sel_anio"), tags$span(`data-i18n`="lbl_eval_year", "Año de Evaluación:"),
+                    choices  = c(as.integer(format(Sys.Date(), "%Y")),
+                                 seq(as.integer(format(Sys.Date(), "%Y")) - 1, 2020, -1)),
+                    selected = as.integer(format(Sys.Date(), "%Y")),
+                    width = "100%"
+                  )
+                ),
+                column(4,
+                  selectInput(
+                    ns("sel_programa"), tags$span(`data-i18n`="lbl_program", "Programa:"),
+                    choices = c("Todos"),
+                    width = "100%"
+                  )
+                ),
+                column(4,
+                  selectInput(
+                    ns("sel_suelo"), tags$span(`data-i18n`="lbl_soil_type", "Tipo de Suelo:"),
+                    choices = c("Todos", "BUENO", "MAL_DRENADO", "ROCOSO"),
+                    width = "100%"
+                  )
+                )
+              )
+            )
+          )
+        )
+      ),
+      
+      br(),
+      
+      # ── Value Boxes ────────────────────────────────────────────────────────
+      uiOutput(ns("ui_vboxes")),
+      
+      br(),
+      
+      # ── Fila 1: Pipeline + Tasa por Cruce ──────────────────────────────────
+      fluidRow(
+        column(6,
+          card(
+            card_header(
+              tags$b(icon("layer-group"), tags$span(`data-i18n`="dash_clones_stage_decision", " Clones por Etapa y Decisión")),
+              class = "bg-success text-white"
+            ),
+            card_body(
+              plotlyOutput(ns("plot_pipeline"), height = "380px") %>% 
+                withSpinner(color = "#16a34a")
+            ),
+            card_footer(class = "text-muted small", 
+              tags$span(`data-i18n`="dash_clones_stage_desc", "Barras agrupadas S/T/R por etapa en la campaña seleccionada.")
+            )
+          )
         ),
-        box(
-          width = 12, title = "Resumen de Selección por Suelo", 
-          status = "warning", solidHeader = TRUE,
-          plotlyOutput(ns("plot_soil_summary"), height = "350px")
+        column(6,
+          card(
+            card_header(
+              tags$b(icon("ranking-star"), tags$span(`data-i18n`="dash_selection_rate", " Tasa de Selección por Cruce (Top 20)")),
+              class = "bg-success text-white"
+            ),
+            card_body(
+              plotlyOutput(ns("plot_tasa_cruce"), height = "380px") %>% 
+                withSpinner(color = "#16a34a")
+            ),
+            card_footer(class = "text-muted small", 
+              tags$span(`data-i18n`="dash_selection_rate_desc", "% de clones Seleccionados sobre el total evaluado por cruce.")
+            )
+          )
+        )
+      ),
+      
+      br(),
+      
+      # ── Fila 2: Tendencia Semanal + Distribución de Brix ───────────────────
+      fluidRow(
+        column(6,
+          card(
+            card_header(
+              tags$b(icon("chart-area"), tags$span(`data-i18n`="dash_weekly_captures", " Capturas Semanales (App de Campo)")),
+              class = "bg-success text-white"
+            ),
+            card_body(
+              plotlyOutput(ns("plot_tendencia"), height = "350px") %>% 
+                withSpinner(color = "#16a34a")
+            ),
+            card_footer(class = "text-muted small",
+              tags$span(`data-i18n`="dash_weekly_captures_desc", "Clones registrados por semana vía app móvil durante la campaña.")
+            )
+          )
+        ),
+        column(6,
+          card(
+            card_header(
+              tags$b(icon("chart-bar"), tags$span(`data-i18n`="dash_brix_dist", " Distribución de Brix en Seleccionados")),
+              class = "bg-success text-white"
+            ),
+            card_body(
+              plotlyOutput(ns("plot_brix_dist"), height = "350px") %>% 
+                withSpinner(color = "#16a34a")
+            ),
+            card_footer(class = "text-muted small",
+              tags$span(`data-i18n`="dash_brix_dist_desc", "Histograma de Brix para clones con acción 'S' en la campaña.")
+            )
+          )
+        )
+      ),
+      
+      br(),
+      
+      # ── Fila 3: Top Cruces por Brix ────────────────────────────────────────
+      fluidRow(
+        column(12,
+          card(
+            card_header(
+              tags$b(icon("droplet"), tags$span(`data-i18n`="dash_top_brix", " Top 10 Cruces por Brix Promedio (Seleccionados)")),
+              class = "bg-success text-white"
+            ),
+            card_body(
+              plotlyOutput(ns("plot_top_brix"), height = "360px") %>%
+                withSpinner(color = "#16a34a")
+            )
+          )
         )
       )
     )
   )
 }
 
-# --- Server del Módulo ---
-mod_dashboard_server <- function(id) {
+# --- Server ---
+mod_dashboard_server <- function(id, con, df_categorias_rv) {
   moduleServer(id, function(input, output, session) {
     
-    # --- Datos Reactivos (Lectura de BD) ---
-    data_funnel <- reactive({
-      # Conteo consolidado por etapa (solo seleccionados)
-      query <- "
-        SELECT 'ST1' as etapa, count(*) as n FROM clones_st1 WHERE accion = 'S'
-        UNION ALL
-        SELECT 'ST2' as etapa, count(*) as n FROM clones_st2 WHERE accion = 'S'
-        UNION ALL
-        SELECT 'ST3' as etapa, count(*) as n FROM clones_st3 WHERE accion = 'S'
-        UNION ALL
-        SELECT 'ST4' as etapa, count(*) as n FROM clones_st4 WHERE accion = 'S'
-        UNION ALL
-        SELECT 'ST5' as etapa, count(*) as n FROM clones_st5 WHERE accion = 'S'
-      "
-      dbGetQuery(con, query)
-    })
-
-    data_pipeline <- reactive({
-      # 0. Familias (Base genetica)
-      df_evf <- tryCatch(dbGetQuery(con, "SELECT cruce, anio, madre, padre, accion FROM familias_evf"), error = function(e) data.frame())
+    # ── Datos base: query unificada y cacheada ─────────────────────────────
+    data_campana <- reactive({
+      anio <- as.integer(input$sel_anio)
+      all_clones <- data.frame()
       
-      # 1-5 Clones (Seguimiento)
-      clones_all <- data.frame()
       for (st in 1:5) {
-        table_name <- validate_stage_table(paste0("clones_st", st))
-        res <- tryCatch(dbGetQuery(con, sprintf("SELECT 'ST%s' as etapa, anio_seleccion, anio_cruce, cruce, num_sel, brix, suelo, accion FROM %s", st, table_name)), error = function(e) NULL)
-        if (!is.null(res) && nrow(res) > 0) clones_all <- rbind(clones_all, res)
+        tbl <- paste0("clones_st", st)
+        if (dbExistsTable(con, tbl)) {
+          q   <- sprintf(
+            "SELECT '%s' AS etapa, programa, cruce, num_sel,
+                    brix, vigor, suelo, accion, anio_seleccion
+             FROM %s
+             WHERE anio_seleccion = %d",
+            paste0("ST", st), tbl, anio
+          )
+          res <- tryCatch(dbGetQuery(con, q), error = function(e) NULL)
+          if (!is.null(res) && nrow(res) > 0)
+            all_clones <- rbind(all_clones, res)
+        }
       }
+      all_clones
+    })
+    
+    # Datos field_captures del año
+    data_fc <- reactive({
+      anio <- as.integer(input$sel_anio)
+      tryCatch(
+        dbGetQuery(con,
+                   sprintf("SELECT * FROM field_captures WHERE anio_seleccion = %d", anio)),
+        error = function(e) data.frame()
+      )
+    })
+    
+    # Filtrado por programa y suelo
+    data_filtrado <- reactive({
+      df <- data_campana()
+      if (nrow(df) == 0) return(df)
+      prog <- input$sel_programa
+      if (!is.null(prog) && prog != "Todos")
+        df <- df %>% filter(toupper(programa) == toupper(prog))
+      suelo <- input$sel_suelo
+      if (!is.null(suelo) && suelo != "Todos")
+        df <- df %>% filter(grepl(suelo, toupper(suelo)))
+      df
+    })
+    
+    # Poblar dropdowns dinámicamente
+    observe({
+      df <- data_campana()
+      if (nrow(df) == 0) return()
+      progs <- c("Todos", sort(unique(df$programa[!is.na(df$programa)])))
+      updateSelectInput(session, "sel_programa", choices = progs)
+    })
+    
+    # ── Value Boxes ───────────────────────────────────────────────────────
+    output$ui_vboxes <- renderUI({
+      df  <- data_filtrado()
+      fc  <- data_fc()
       
-      # Promociones
-      df_promo <- tryCatch(dbReadTable(con, "promociones"), error = function(e) data.frame())
+      total   <- nrow(df)
+      sel     <- sum(df$accion == "S", na.rm = TRUE)
+      test    <- sum(df$accion == "T", na.rm = TRUE)
+      rej     <- sum(df$accion == "R", na.rm = TRUE)
+      tasa    <- if (total > 0) paste0(round(sel / total * 100, 1), "%") else "\u2014"
+      brix_prom <- if (sel > 0) round(mean(df$brix[df$accion == "S"], na.rm = TRUE), 1) else "\u2014"
+      fc_tot  <- nrow(fc)
       
-      list(evf = df_evf, clones = clones_all, promo = df_promo)
+      fluidRow(
+        column(2,
+          value_box(
+            title    = "Evaluados",
+            value    = format(total, big.mark = ","),
+            showcase = icon("dna"),
+            theme    = "primary",
+            showcase_layout = "left center"
+          )
+        ),
+        column(2,
+          value_box(
+            title    = "Seleccionados",
+            value    = format(sel, big.mark = ","),
+            showcase = icon("check-double"),
+            theme    = "success",
+            showcase_layout = "left center"
+          )
+        ),
+        column(2,
+          value_box(
+            title    = "Rechazados",
+            value    = format(rej, big.mark = ","),
+            showcase = icon("circle-xmark"),
+            theme    = "danger",
+            showcase_layout = "left center"
+          )
+        ),
+        column(2,
+          value_box(
+            title    = "Tasa Selección",
+            value    = tasa,
+            showcase = icon("chart-line"),
+            theme    = "info",
+            showcase_layout = "left center"
+          )
+        ),
+        column(2,
+          value_box(
+            title    = "Brix Prom (S)",
+            value    = brix_prom,
+            showcase = icon("droplet"),
+            theme    = "warning",
+            showcase_layout = "left center"
+          )
+        ),
+        column(2,
+          value_box(
+            title    = "Capturas Móvil",
+            value    = format(fc_tot, big.mark = ","),
+            showcase = icon("mobile-screen"),
+            theme    = "secondary",
+            showcase_layout = "left center"
+          )
+        )
+      )
     })
     
-    # --- KPIs ---
-    output$vbox_familias <- renderValueBox({
-      n <- nrow(data_pipeline()$evf)
-      valueBox(n, "Familias en Sistema", icon = icon("users"), color = "purple")
-    })
-    
-    output$vbox_clones <- renderValueBox({
-      n <- if(nrow(data_pipeline()$clones) > 0) n_distinct(paste0(data_pipeline()$clones$cruce, data_pipeline()$clones$num_sel)) else 0
-      valueBox(n, "Clones Evaluados (Total)", icon = icon("dna"), color = "green")
-    })
-    
-    output$vbox_tasa <- renderValueBox({
-      df <- data_pipeline()$evf
-      tasa <- if(nrow(df) > 0) round(sum(df$accion == "S") / nrow(df) * 100, 1) else 0
-      valueBox(paste0(tasa, "%"), "Tasa de Éxito EVF", icon = icon("chart-line"), color = "blue")
-    })
-    
-    output$vbox_variedades <- renderValueBox({
-      n <- nrow(data_pipeline()$promo)
-      valueBox(n, "Nuevas Variedades CR", icon = icon("certificate"), color = "yellow")
-    })
-    
-    # --- Gráfico 1: Funnel Pipeline ---
-    output$plot_funnel_pipeline <- renderPlotly({
-      df <- data_funnel()
-      validate(need(nrow(df) > 0, "No hay datos de selección para mostrar el embudo."))
+    # ── Gráfico 1: Barras agrupadas por etapa ─────────────────────────────
+    output$plot_pipeline <- renderPlotly({
+      df <- data_filtrado()
+      shiny::validate(need(
+        nrow(df) > 0,
+        "No hay clones registrados para esta campaña."
+      ))
       
-      # Conteo por etapa
-      counts <- df %>% 
-        count(etapa) %>%
-        # Asegurar orden
-        mutate(etapa = factor(etapa, levels = c("ST1", "ST2", "ST3", "ST4", "ST5"))) %>%
-        arrange(etapa)
-        
-      plot_ly(counts, x = ~n, y = ~etapa, type = 'bar', orientation = 'h',
-              marker = list(color = '#27ae60', line = list(color = '#1a472a', width = 1))) %>%
-        layout(title = "Embudo de Selección Consolidado",
-               xaxis = list(title = "Número de Individuos"),
-               yaxis = list(title = ""))
-    })
-    
-    # --- Gráfico 2: Top Parents (Rankings) ---
-    output$plot_top_parents <- renderPlotly({
-      d <- data_pipeline()
-      validate(
-        need(nrow(d$evf) > 0, "Se requiere la base de datos de Familias para calcular rankings."),
-        need(nrow(d$clones) > 0, "Se requieren datos de seguimiento de Clones.")
+      resumen <- df %>%
+        mutate(
+          etapa  = factor(etapa, levels = paste0("ST", 1:5)),
+          accion = factor(accion, levels = c("S", "T", "R"),
+                          labels = c("Seleccionado", "Testigo", "Rechazado"))
+        ) %>%
+        group_by(etapa, accion) %>%
+        summarise(n = n(), .groups = "drop")
+      
+      colores <- c(
+        "Seleccionado" = "#16a34a",
+        "Testigo"      = "#d97706",
+        "Rechazado"    = "#dc2626"
       )
       
-      # Unir clones con sus padres
-      df_join <- d$clones %>%
-        left_join(d$evf %>% select(cruce, anio_seleccion, madre, padre), by = c("cruce", "anio_seleccion"))
+      plot_ly(
+        resumen,
+        x     = ~etapa,
+        y     = ~n,
+        color = ~accion,
+        colors = colores,
+        type  = "bar",
+        text  = ~n,
+        textposition = "auto",
+        hovertemplate = "%{x} · %{fullData.name}: %{y}<extra></extra>"
+      ) %>%
+        layout(
+          barmode = "group",
+          bargap = 0.2,
+          xaxis   = list(title = "Etapa"),
+          yaxis   = list(title = "Número de Clones"),
+          legend  = list(orientation = "h", x = 0.15, y = 1.1),
+          margin  = list(l = 60, r = 20, t = 30, b = 50)
+        )
+    })
+    
+    # ── Gráfico 2: Tasa de selección por cruce ────────────────────────────
+    output$plot_tasa_cruce <- renderPlotly({
+      df <- data_filtrado()
+      shiny::validate(need(nrow(df) > 0, "No hay datos de cruces para esta campaña."))
       
-      # Calcular éxito por progenitor (Madre o Padre)
-      ranking <- df_join %>%
-        pivot_longer(cols = c(madre, padre), names_to = "tipo", values_to = "progenitor") %>%
-        filter(!is.na(progenitor) & progenitor != "" & progenitor != "TESTIGO") %>%
-        group_by(progenitor) %>%
+      tasa_cruce <- df %>%
+        group_by(cruce) %>%
         summarise(
-          puntos = sum(case_when(
-            etapa == "CLONES_ST1" ~ 1,
-            etapa == "CLONES_ST2" ~ 2,
-            etapa == "CLONES_ST3" ~ 5,
-            etapa == "CLONES_ST4" ~ 10,
-            etapa == "CLONES_ST5" ~ 20,
-            TRUE ~ 0
-          )),
-          n_hijos = n_distinct(paste0(cruce, num_sel))
+          total = n(),
+          sel   = sum(accion == "S", na.rm = TRUE),
+          tasa  = round(sel / total * 100, 1),
+          .groups = "drop"
         ) %>%
-        arrange(desc(puntos)) %>%
-        head(10)
+        filter(total >= 2) %>%
+        arrange(desc(tasa), desc(total)) %>%
+        head(20)
       
-      plot_ly(ranking, x = ~reorder(progenitor, puntos), y = ~puntos, type = 'bar',
-              marker = list(color = '#3498db')) %>%
-        layout(title = "Top 10 Progenitores (Puntaje Genético)",
-               xaxis = list(title = "Progenitor"),
-               yaxis = list(title = "Puntos de Éxito (Ponderado)"))
+      shiny::validate(need(nrow(tasa_cruce) > 0, "No hay suficientes datos por cruce."))
+      
+      plot_ly(tasa_cruce, x = ~reorder(cruce, -tasa)) %>%
+        add_bars(y = ~total, name = "Evaluados", 
+                 marker = list(color = "#cbd5e1"),
+                 hovertemplate = "Evaluados: %{y}<extra></extra>") %>%
+        add_bars(y = ~sel, name = "Seleccionados", 
+                 marker = list(color = "#16a34a"),
+                 text = ~paste0(tasa, "%"),
+                 textposition = "outside",
+                 textfont = list(size = 10, color = "#0b5c2e"),
+                 hovertemplate = "Sel: %{y} (%{text})<extra></extra>") %>%
+        layout(
+          barmode = "group",
+          xaxis = list(title = "", tickangle = -45, tickfont = list(size = 10)),
+          yaxis = list(title = "Clones"),
+          legend = list(orientation = "h", x = 0.2, y = 1.1),
+          margin = list(b = 80, t = 30)
+        )
     })
     
-    # --- Gráfico 3: Distribución de Brix ---
+    # ── Gráfico 3: Tendencia semanal (área) ──────────────────────────────
+    output$plot_tendencia <- renderPlotly({
+      fc <- data_fc()
+      shiny::validate(need(nrow(fc) > 0, "No hay registros de la app móvil para este año."))
+      
+      fc_sem <- fc %>%
+        mutate(
+          fecha  = as.Date(substr(ts, 1, 10)),
+          semana = format(fecha, "%Y-W%V")
+        ) %>%
+        group_by(semana) %>%
+        summarise(
+          capturas = n(),
+          sel      = sum(accion == "S", na.rm = TRUE),
+          fecha_min = min(fecha),
+          .groups  = "drop"
+        ) %>%
+        arrange(fecha_min)
+      
+      plot_ly(fc_sem, x = ~semana) %>%
+        add_trace(
+          y    = ~capturas,
+          name = "Total Capturas",
+          type = "scatter", mode = "none",
+          fill = "tozeroy",
+          fillcolor = "rgba(134,239,172,0.35)",
+          line = list(color = "#86efac")
+        ) %>%
+        add_trace(
+          y    = ~sel,
+          name = "Seleccionados",
+          type = "scatter", mode = "lines+markers",
+          line = list(color = "#0b5c2e", width = 2.5),
+          marker = list(color = "#0b5c2e", size = 7)
+        ) %>%
+        layout(
+          xaxis  = list(title = "Semana", tickangle = -45, tickfont = list(size = 9)),
+          yaxis  = list(title = "Clones"),
+          legend = list(orientation = "h", x = 0.15, y = 1.1),
+          margin = list(b = 80, t = 30),
+          hovermode = "x unified"
+        )
+    })
+    
+    # ── Gráfico 4: Distribución de Brix (Histograma) ─────────────────────
     output$plot_brix_dist <- renderPlotly({
-      d <- data_pipeline()$clones
-      validate(need(nrow(d) > 0, "No hay datos de brix registrados en los estados de selección."))
+      df <- data_filtrado()
+      shiny::validate(need(nrow(df) > 0, "No hay datos."))
       
-      plot_ly(d, y = ~brix, x = ~etapa, type = "box", color = ~etapa,
-              boxpoints = "all", jitter = 0.3, pointpos = -1.8) %>%
-        layout(title = "Variabilidad de Brix por Etapa de Selección",
-               yaxis = list(title = "Brix (%)"),
-               xaxis = list(title = "Etapa"))
+      df_sel <- df %>% filter(accion == "S", !is.na(brix))
+      shiny::validate(need(nrow(df_sel) > 0, "No hay clones seleccionados con Brix."))
+      
+      med <- median(df_sel$brix, na.rm = TRUE)
+      
+      plot_ly(df_sel, x = ~brix, type = "histogram",
+              marker = list(
+                color = "rgba(22,163,74,0.6)",
+                line = list(color = "#0b5c2e", width = 1)
+              ),
+              nbinsx = 25,
+              hovertemplate = "Brix: %{x}<br>Clones: %{y}<extra></extra>"
+      ) %>%
+        layout(
+          xaxis = list(title = "Brix"),
+          yaxis = list(title = "Frecuencia"),
+          margin = list(l = 50, r = 20, t = 20, b = 50),
+          shapes = list(
+            list(type = "line", x0 = med, x1 = med, y0 = 0, y1 = 1, yref = "paper",
+                 line = list(dash = "dash", color = "#d97706", width = 2))
+          ),
+          annotations = list(
+            list(x = med, y = 1.05, yref = "paper", text = paste0("Mediana: ", round(med, 1)),
+                 showarrow = FALSE, font = list(color = "#d97706", size = 12))
+          )
+        )
     })
     
-    # --- Gráfico 4: Resumen Suelo ---
-    output$plot_soil_summary <- renderPlotly({
-      d <- data_pipeline()$clones
-      validate(need(nrow(d) > 0, "Esperando datos por suelo..."))
+    # ── Gráfico 5: Top 10 cruces por Brix promedio (barras horizontales) ──
+    output$plot_top_brix <- renderPlotly({
+      df <- data_filtrado()
+      shiny::validate(need(nrow(df) > 0, "No hay datos."))
       
-      soil_df <- d %>%
-        group_by(suelo, etapa) %>%
-        summarise(n = n(), .groups = 'drop')
+      top_brix <- df %>%
+        filter(accion == "S", !is.na(brix)) %>%
+        group_by(cruce) %>%
+        summarise(
+          n_sel     = n(),
+          brix_prom = round(mean(brix, na.rm = TRUE), 1),
+          vigor_prom = round(mean(as.numeric(vigor), na.rm = TRUE), 1),
+          brix_max  = round(max(brix, na.rm = TRUE), 1),
+          .groups = "drop"
+        ) %>%
+        filter(n_sel >= 4) %>%
+        arrange(desc(brix_prom)) %>%
+        head(10) %>%
+        arrange(brix_prom)
       
-      plot_ly(soil_df, x = ~etapa, y = ~n, color = ~suelo, type = 'bar') %>%
-        layout(barmode = 'stack', title = "Distribución de Clones por Suelo")
+      shiny::validate(need(nrow(top_brix) > 0, "No hay cruces con suficientes seleccionados."))
+      
+      plot_ly(top_brix) %>%
+        add_bars(
+          y = ~factor(cruce, levels = cruce),
+          x = ~brix_prom,
+          orientation = "h",
+          marker = list(
+            color = ~brix_prom,
+            colorscale = list(c(0, "#86efac"), c(0.5, "#22c55e"), c(1, "#0b5c2e")),
+            line = list(width = 1, color = "#064e3b")
+          ),
+          text = ~paste0("Cruce ", cruce, " · Brix: ", brix_prom, " · Vigor: ", vigor_prom, " · N=", n_sel),
+          textposition = "inside",
+          insidetextanchor = "start",
+          textfont = list(color = "#fff", size = 12, family = "Inter"),
+          hovertemplate = "Cruce: %{y}<br>Brix Prom: %{x}<br>Máx: %{customdata[0]}<extra></extra>",
+          customdata = ~cbind(brix_max)
+        ) %>%
+        layout(
+          xaxis = list(title = "Brix Promedio", range = c(0, max(top_brix$brix_prom) * 1.15)),
+          yaxis = list(title = "", automargin = TRUE, tickfont = list(size = 12)),
+          margin = list(l = 80, r = 20, t = 20, b = 50),
+          showlegend = FALSE
+        )
     })
+    
+    # ── Exportar CSV ────────────────────────────────────────────────────────
+    output$descargar_csv <- downloadHandler(
+      filename = function() {
+        paste0("Campana_", input$sel_anio, "_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        write.csv(data_filtrado(), file, row.names = FALSE)
+      }
+    )
     
   })
 }

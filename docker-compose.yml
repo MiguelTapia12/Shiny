@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    container_name: breeding_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: breeding_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  shiny_app:
+    build: .
+    container_name: breeding_shiny
+    ports:
+      - "3838:3838"
+    environment:
+      - DB_TYPE=postgres
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=mysecretpassword
+      - DB_NAME=breeding_db
+      - BREEDING_API_TOKEN=SugarCane2026Secure
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  pgdata:
