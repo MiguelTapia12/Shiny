@@ -19,12 +19,19 @@ load_allact_data <- function(filepath = "AllAct2025.xls") {
   
   # Limpiar nombres de columnas (remover los sufijos tipo ,C,10 o ,N,6,2)
   nombres_limpios <- gsub(",.*", "", colnames(df))
-  # Remover espacios y pasar a minúsculas para facilidad de uso
   nombres_limpios <- tolower(trimws(nombres_limpios))
-  
   colnames(df) <- nombres_limpios
   
-  # Casteo de tipos básicos (asegurarnos que las métricas clave sean numéricas)
+  # Normalización de nombres de enfermedades comunes
+  if ("carb" %in% names(df) && !"carbon" %in% names(df)) df <- df %>% rename(carbon = carb)
+  if ("esm" %in% names(df) && !"es" %in% names(df))     df <- df %>% rename(es = esm)
+  
+  # Asegurar que las columnas existan antes del mutate
+  for (col in c("carbon", "roya", "es", "disease", "y", "q", "agro", "gen", "factor", "maxest", "sta")) {
+    if (!(col %in% names(df))) df[[col]] <- NA_character_
+  }
+  
+  # Casteo de tipos básicos
   df_clean <- df %>%
     mutate(
       variedad = as.character(variedad),
@@ -32,35 +39,34 @@ load_allact_data <- function(filepath = "AllAct2025.xls") {
       padre = as.character(padre),
       adapt = as.character(adapt),
       status = as.character(status),
-      estatus = as.character(estatus),
       
-      # Numéricas (si alguna falla la coercion, se volverá NA de forma segura)
-      tca = as.numeric(tca),
-      rend = as.numeric(rend),
-      taa = as.numeric(taa),
-      
-      y_score = as.numeric(y),
-      q_score = as.numeric(q),
+      # Numéricas
+      tca    = as.numeric(tca),
+      rend   = as.numeric(rend),
+      taa    = as.numeric(taa),
       carbon = as.numeric(carbon),
-      roya = as.numeric(roya),
-      es = as.numeric(es),
+      roya   = as.numeric(roya),
+      es     = as.numeric(es),
       disease = as.numeric(disease),
-      
-      agro = as.numeric(agro),
-      gen = as.numeric(gen),
+      agro   = as.numeric(agro),
+      gen    = as.numeric(gen),
       factor = as.numeric(factor),
-      
-      maxest = as.numeric(maxest),
-      sta = as.numeric(sta)
+      maxest = as.numeric(maxest)
     )
   
-  # Llenar posibles NAs en variables críticas con 0 o el mínimo aceptable para que no rompa la matemática
+  # Llenar posibles NAs en variables críticas
   df_clean <- df_clean %>%
     mutate(
-      factor = if_else(is.na(factor), 0, factor),
+      factor  = if_else(is.na(factor), 0, factor),
       disease = if_else(is.na(disease), 0, disease),
-      agro = if_else(is.na(agro), 0, agro),
-      adapt = if_else(is.na(adapt), "Cualquiera", adapt)
+      agro    = if_else(is.na(agro), 0, agro),
+      adapt   = case_when(
+        toupper(trimws(adapt)) %in% c("GOOD",  "BUENO")             ~ "BUENO",
+        toupper(trimws(adapt)) %in% c("CLAY",  "MAL_DRENADO", "MD") ~ "MAL_DRENADO",
+        toupper(trimws(adapt)) %in% c("ROCKY", "ROCOSO")            ~ "ROCOSO",
+        is.na(adapt)                                                 ~ "BUENO",
+        TRUE ~ toupper(trimws(adapt))
+      )
     )
   
   return(df_clean)

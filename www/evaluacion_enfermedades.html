@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CR Breeding — Fitopatología</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#f5f0e8;
+  --bg2:#ede7d9;
+  --card:#fff9f0;
+  --border:#d4c9b0;
+  --border2:#c2b49a;
+  --green:#1a5c2a;
+  --green2:#2d7a3f;
+  --green-light:#e8f5ec;
+  --amber:#b45309;
+  --amber-bg:#fff8ed;
+  --red:#b91c1c;
+  --red-bg:#fff1f1;
+  --text:#1c1009;
+  --text2:#5a4a35;
+  --text3:#9a8a75;
+  --danger:#dc2626;
+  --warning:#d97706;
+}
+html{height:100%;font-size:16px}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto}
+
+/* TOP BAR */
+.top-bar{background:var(--green);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.top-brand{display:flex;flex-direction:column}
+.top-brand-title{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.3px}
+.top-brand-sub{font-size:11px;color:#a7d9b4;margin-top:1px;font-family:'DM Mono',monospace}
+.conn-pill{display:flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:4px 10px;border-radius:20px;border:1px solid}
+.conn-pill.online{color:#4ade80;border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.1)}
+.conn-pill.offline{color:#fca5a5;border-color:rgba(252,165,165,.3);background:rgba(252,165,165,.1)}
+.conn-dot{width:6px;height:6px;border-radius:50%}
+.conn-pill.online .conn-dot{background:#4ade80}
+.conn-pill.offline .conn-dot{background:#fca5a5}
+
+/* TABS */
+.tabs{display:flex;background:var(--green);border-bottom:2px solid rgba(255,255,255,.1);padding:0 8px}
+.tab{flex:1;text-align:center;padding:9px 4px;font-size:11px;font-weight:500;color:rgba(255,255,255,.5);border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab i{display:block;font-size:16px;margin-bottom:3px}
+.tab.active{color:#fff;border-bottom-color:#a7d9b4}
+
+/* VIEWS */
+.view{display:none;padding:14px;flex:1;padding-bottom:100px}
+.view.active{display:block}
+
+/* SECTION LABEL */
+.sec-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin:18px 0 10px; border-bottom: 1px solid var(--border); padding-bottom:4px;}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:12px; box-shadow: 0 2px 5px rgba(0,0,0,0.03)}
+
+/* FIELDS */
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px}
+input,select{width:100%;background:#fff;border:1.5px solid var(--border);border-radius:9px;padding:12px 12px;font-size:15px;font-weight:500; color:var(--text);font-family:'DM Sans',sans-serif;appearance:none;-webkit-appearance:none;outline:none;transition:border-color .2s}
+input:focus,select:focus{border-color:var(--green)}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+.disease-card { border-left: 4px solid var(--text3); }
+.disease-card.carbon { border-left-color: #111; }
+.disease-card.escaldadura { border-left-color: var(--amber); }
+.disease-card.roya { border-left-color: var(--danger); }
+
+/* NUMBER INPUT STYLES */
+.grc-input{width:100%;text-align:center;font-size:18px;font-weight:700;font-family:'DM Mono',monospace;padding:10px 4px;border-radius:8px;border:1.5px solid var(--border);background:#fff}
+
+/* FLOATING SAVE */
+.float-save{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--green);border:none;border-radius:100px;padding:14px 32px;font-size:15px;font-weight:600;color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(26,92,42,.4);transition:all .2s;z-index:50;white-space:nowrap}
+.float-save:active{transform:translateX(-50%) scale(.97)}
+
+/* RECORDS */
+.rec-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px; display:flex; justify-content:space-between; align-items:center}
+.rec-title{font-size:14px;font-weight:700;color:var(--text)}
+.rec-meta{font-size:11px;color:var(--text3);margin-top:2px}
+.rec-badges { margin-top: 6px; display:flex; gap:6px; flex-wrap:wrap;}
+.badge { font-size: 10px; font-weight: 700; padding: 3px 6px; border-radius: 4px; background: var(--bg2);}
+.del-btn{background:none;border:none;color:var(--red);font-size:16px;cursor:pointer;padding:8px;}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3)}
+.empty-state i{font-size:36px;display:block;margin-bottom:10px;color:var(--border2)}
+
+/* SYNC TAB STYLES */
+.sync-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px; }
+.sync-box { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:20px 10px; text-align:center; }
+.sync-num { font-size:32px; font-weight:700; font-family:'DM Mono',monospace; line-height:1; }
+.sync-lbl { font-size:12px; color:var(--text3); margin-top:5px; }
+
+.btn-sync-main { width:100%; background:var(--green); color:#fff; border:none; border-radius:10px; padding:16px; font-size:15px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:'DM Sans',sans-serif; margin-bottom:10px; box-shadow:0 2px 6px rgba(26,92,42,.2); transition:all .2s;}
+.btn-sync-main:active { transform:scale(.98); }
+
+.btn-sync-test { width:100%; background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:10px; padding:14px; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:'DM Sans',sans-serif; margin-bottom:15px; transition:all .2s;}
+.btn-sync-test:active { background:var(--bg2); }
+
+.console-box { background:#fff; border:1px solid var(--border); border-radius:10px; padding:14px; font-family:'DM Mono',monospace; font-size:12px; color:var(--text2); min-height:80px; word-break:break-all;}
+
+/* NOTIFICATIONS */
+.toast {position:fixed; top:70px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 20px; border-radius:30px; font-size:13px; font-weight:500; opacity:0; transition:opacity 0.3s; pointer-events:none; z-index:1000;}
+</style>
+<script src="i18n.js"></script>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="top-brand">
+    <div class="top-brand-title" data-i18n="disease_title">Fitopatología</div>
+    <div class="top-brand-sub">CR Breeding System</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button onclick="toggleLang()" style="background:none;border:1px solid rgba(74,222,128,.3);border-radius:16px;padding:3px 10px;font-size:11px;font-weight:600;color:#a7d9b4;cursor:pointer" id="lang_toggle_label">🇪🇸 ES</button>
+    <div class="conn-pill" id="connPill">
+      <div class="conn-dot"></div>
+      <span id="connText" data-i18n="status_calculating">Calculando...</span>
+    </div>
+  </div>
+</div>
+<script>function toggleLang(){var c=i18n.lang||'es';i18n.setLang(c==='es'?'en':'es');}</script>
+
+<div class="tabs">
+  <div class="tab active" data-target="view-eval"><i class="fa-solid fa-clipboard-list"></i><span data-i18n="disease_tab_eval">Evaluación</span></div>
+  <div class="tab" data-target="view-recs" id="tabRecs"><i class="fa-solid fa-database"></i><span data-i18n="disease_tab_records">Registros (0)</span></div>
+  <div class="tab" data-target="view-sync"><i class="fa-solid fa-cloud-arrow-up"></i><span data-i18n="disease_tab_sync">Sincronizar</span></div>
+  <div class="tab" data-target="view-cfg"><i class="fa-solid fa-gear"></i><span data-i18n="disease_tab_config">Config</span></div>
+</div>
+
+<div id="toast" class="toast">Mensaje guardado</div>
+
+<!-- VISTA 0: CONFIGURACION -->
+<div id="view-cfg" class="view">
+  <div class="sec-label" data-i18n="disease_server_config">Configuración del Servidor</div>
+  <div class="card">
+    <div style="font-weight:600; margin-bottom:10px; font-size:14px; color:var(--green)">
+      <i class="fa-solid fa-server"></i> <span data-i18n="disease_ngrok_url">URL de ngrok (o IP local)</span>
+    </div>
+    <div class="field">
+      <input type="text" id="i_server" placeholder="Ej. 1234-abcd.ngrok-free.app">
+    </div>
+    <div style="font-size:11px; color:var(--text3); margin-top:4px;" data-i18n="disease_server_hint">
+      Sin "https://" - Actualizar cada día con la URL generada por ngrok.
+    </div>
+    <button class="btn-sync-main" style="margin-top:15px;" onclick="guardarConfiguracion()">
+      <i class="fa-solid fa-floppy-disk"></i> <span data-i18n="btn_save_server">Guardar Servidor</span>
+    </button>
+  </div>
+</div>
+
+<!-- VISTA 1: EVALUACION -->
+<div id="view-eval" class="view active">
+  <div class="sec-label" data-i18n="disease_identification">1. Identificación</div>
+  <div class="card">
+    <div class="row-2">
+      <div class="field">
+        <label data-i18n="lbl_stage">Etapa</label>
+        <select id="i_etapa">
+          <option value="ST1" data-i18n="disease_st1_label">ST1 (Estado 1)</option>
+          <option value="ST2" data-i18n="disease_st2_label">ST2 (Estado 2)</option>
+          <option value="ST3" data-i18n="disease_st3_label">ST3 (Estado 3)</option>
+          <option value="ST4" data-i18n="disease_st4_label">ST4 (Estado 4)</option>
+          <option value="ST5" data-i18n="disease_st5_label">ST5 (Estado 5)</option>
+          <option value="EVF CR" data-i18n="disease_evf_cr_label">EVF CR (Evaluación Familias CR)</option>
+          <option value="EVF B" data-i18n="disease_evf_b_label">EVF B (Evaluación Familias B)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="disease_cross_variety">Cruce / Variedad</label>
+        <input type="text" id="i_cruce" placeholder="Ej. CR 22-1234">
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label data-i18n="lbl_program">Programa</label>
+        <select id="i_programa">
+          <option value="CR" data-i18n="disease_prog_cr">Central Romana (CR)</option>
+          <option value="BR" data-i18n="disease_prog_br">Barbados Romana (BR)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-i18n="disease_soil_type">Tipo de Suelo</label>
+        <select id="i_suelo">
+          <option value="BUENO" data-i18n="soil_good">Bueno</option>
+          <option value="MAL_DRENADO" data-i18n="soil_poor_drain">Mal Drenado</option>
+          <option value="ROCOSO" data-i18n="soil_rocky">Rocoso</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label" data-i18n="disease_eval_base">2. Base de Evaluación</div>
+  <div class="card">
+    <div class="field">
+      <label id="lbl_base" data-i18n="disease_total_plants">Total de Plantas Evaluadas</label>
+      <input type="number" id="i_base" class="grc-input" placeholder="0" inputmode="numeric">
+    </div>
+  </div>
+
+  <div class="sec-label" data-i18n="disease_count_section">3. Conteo de Enfermedades</div>
+  
+  <div class="card disease-card carbon">
+    <div style="font-weight:700; margin-bottom:10px; font-size:14px;"><i class="fa-solid fa-fire text-dark"></i> <span data-i18n="disease_smut">Carbón</span></div>
+    <div class="row-2">
+      <div class="field">
+        <label data-i18n="disease_whips">Látigos</label>
+        <input type="number" id="i_carb_lat" class="grc-input" placeholder="0" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label data-i18n="disease_herbaceous">Herbáceas</label>
+        <input type="number" id="i_carb_her" class="grc-input" placeholder="0" inputmode="numeric">
+      </div>
+    </div>
+  </div>
+
+  <div class="card disease-card escaldadura">
+    <div style="font-weight:700; margin-bottom:10px; font-size:14px; color:var(--amber)"><i class="fa-solid fa-leaf"></i> <span data-i18n="disease_scald">Escaldadura</span></div>
+    <div class="row-2">
+      <div class="field">
+        <label data-i18n="disease_germinated_buds">Yemas Germinadas</label>
+        <input type="number" id="i_esc_yemas" class="grc-input" placeholder="0" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label data-i18n="disease_white_lines">Líneas Blancas</label>
+        <input type="number" id="i_esc_lineas" class="grc-input" placeholder="0" inputmode="numeric">
+      </div>
+    </div>
+  </div>
+
+  <div class="card disease-card roya">
+    <div style="font-weight:700; margin-bottom:10px; font-size:14px; color:var(--danger)"><i class="fa-solid fa-wind"></i> <span data-i18n="disease_rust">Roya</span></div>
+    <div class="field">
+      <label data-i18n="disease_direct_infection">% Infección Directa</label>
+      <input type="number" step="0.1" id="i_roya_pct" class="grc-input" placeholder="0.0" inputmode="decimal">
+    </div>
+  </div>
+
+  <button class="float-save" onclick="guardarRegistro()">
+    <i class="fa-solid fa-download"></i> <span data-i18n="btn_save_locally">Guardar Localmente</span>
+  </button>
+</div>
+
+<!-- VISTA 2: REGISTROS -->
+<div id="view-recs" class="view">
+  <div class="sec-label" data-i18n="disease_pending_records">Registros Pendientes de Envío</div>
+  <div id="rec-list">
+    <!-- Generado vía JS -->
+  </div>
+</div>
+
+<!-- VISTA 3: SYNC -->
+<div id="view-sync" class="view">
+  <div class="sync-grid">
+    <div class="sync-box">
+      <div class="sync-num" style="color:var(--amber)" id="sync-count">0</div>
+      <div class="sync-lbl" data-i18n="lbl_pending">pendientes</div>
+    </div>
+    <div class="sync-box">
+      <div class="sync-num" style="color:var(--green)" id="sync-done">0</div>
+      <div class="sync-lbl" data-i18n="lbl_synced">sincronizados</div>
+    </div>
+  </div>
+  
+  <div class="card" style="display:flex; align-items:center; gap:10px;">
+    <i class="fa-solid fa-server" style="color:var(--green); font-size:20px;"></i>
+    <div>
+      <div style="font-size:10px; font-weight:700; color:var(--text2); text-transform:uppercase;" data-i18n="disease_server_configured">Servidor Configurado</div>
+      <div style="font-size:12px; color:var(--text); margin-top:2px; font-family:'DM Mono',monospace;" id="syncServerUrl">-- Sin configurar --</div>
+    </div>
+  </div>
+
+  <button class="btn-sync-main" onclick="sincronizarAPI()" id="btnSync">
+    <i class="fa-solid fa-cloud-arrow-up"></i> <span data-i18n="sync_sync_office">Sincronizar con la Oficina</span>
+  </button>
+  
+  <button class="btn-sync-test" onclick="probarConexion()" id="btnTest">
+    <i class="fa-solid fa-satellite-dish"></i> <span data-i18n="sync_test_conn">Probar Conexión</span>
+  </button>
+
+  <div class="console-box" id="syncConsole">
+    &rarr; <span data-i18n="sync_waiting">Esperando acción...</span>
+  </div>
+</div>
+
+<script>
+// --- ESTADO GLOBAL ---
+let registros = JSON.parse(localStorage.getItem('cr_sanidad_recs')) || [];
+let configLocal = JSON.parse(localStorage.getItem('cr_sanidad_cfg')) || { server: '' };
+
+function buildURL(raw) {
+  if(!raw) return '';
+  raw = raw.trim();
+  if(!raw.startsWith('http')) raw = 'https://' + raw;
+  return raw.replace(/\/$/, '');
+}
+
+// --- INICIALIZACION ---
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById('i_server').value = configLocal.server || '';
+  actualizarUI();
+  chequearConexion();
+  window.addEventListener('online', chequearConexion);
+  window.addEventListener('offline', chequearConexion);
+  
+  // Lógica interactiva de Etiquetas (Plantas vs Tallos)
+  document.getElementById('i_etapa').addEventListener('change', function(e) {
+    const val = e.target.value;
+    const lbl = document.getElementById('lbl_base');
+    if(val === 'ST2' || val === 'ST3') {
+      lbl.innerText = "Total de Tallos Evaluados";
+    } else {
+      lbl.innerText = "Total de Plantas Evaluadas";
+    }
+  });
+});
+
+// --- NAVEGACION (TABS) ---
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', (e) => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    
+    e.currentTarget.classList.add('active');
+    document.getElementById(e.currentTarget.dataset.target).classList.add('active');
+    if(e.currentTarget.dataset.target === 'view-recs') renderRegistros();
+  });
+});
+
+// --- LOGICA DE DATOS ---
+function guardarRegistro() {
+  const cruce = document.getElementById('i_cruce').value.trim().toUpperCase();
+  if(!cruce) {
+    mostrarToast("Por favor ingresa el nombre del Cruce / Variedad");
+    return;
+  }
+  
+  const baseVal = parseInt(document.getElementById('i_base').value) || 0;
+  if(baseVal <= 0) {
+    mostrarToast("La base de evaluación debe ser mayor a 0");
+    return;
+  }
+
+  const rec = {
+    id: Date.now().toString(),
+    fecha: new Date().toISOString().split('T')[0],
+    etapa: document.getElementById('i_etapa').value,
+    cruce: cruce,
+    programa: document.getElementById('i_programa').value,
+    suelo: document.getElementById('i_suelo').value,
+    anio_seleccion: new Date().getFullYear(),
+    
+    carbon_latigos: parseInt(document.getElementById('i_carb_lat').value) || 0,
+    carbon_herbaceas: parseInt(document.getElementById('i_carb_her').value) || 0,
+    carbon_base_evaluacion: baseVal,
+    
+    escaldadura_yemas_germinadas: parseInt(document.getElementById('i_esc_yemas').value) || 0,
+    escaldadura_lineas_blancas: parseInt(document.getElementById('i_esc_lineas').value) || 0,
+    escaldadura_base_evaluacion: baseVal,
+    
+    roya_porcentaje: parseFloat(document.getElementById('i_roya_pct').value) || 0.0,
+    usuario: "Tablet_Sanidad"
+  };
+
+  registros.push(rec);
+  localStorage.setItem('cr_sanidad_recs', JSON.stringify(registros));
+  
+  // Limpiar form
+  document.getElementById('i_cruce').value = "";
+  document.getElementById('i_carb_lat').value = "";
+  document.getElementById('i_carb_her').value = "";
+  document.getElementById('i_esc_yemas').value = "";
+  document.getElementById('i_esc_lineas').value = "";
+  document.getElementById('i_roya_pct').value = "";
+  // No limpiamos etapa, programa, suelo, ni base, ya que suelen repetirse en el mismo lote
+  
+  mostrarToast("✔ Guardado en memoria local");
+  actualizarUI();
+}
+
+function eliminarRegistro(id) {
+  if(confirm("¿Seguro que deseas eliminar esta evaluación?")) {
+    registros = registros.filter(r => r.id !== id);
+    localStorage.setItem('cr_sanidad_recs', JSON.stringify(registros));
+    renderRegistros();
+    actualizarUI();
+  }
+}
+
+function renderRegistros() {
+  const container = document.getElementById('rec-list');
+  if(registros.length === 0) {
+    container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-box-open"></i><p>No hay evaluaciones pendientes.</p></div>`;
+    return;
+  }
+  
+  container.innerHTML = registros.slice().reverse().map(r => `
+    <div class="rec-card">
+      <div>
+        <div class="rec-title">${r.cruce}</div>
+        <div class="rec-meta">${r.etapa} | Base: ${r.carbon_base_evaluacion} | ${r.suelo}</div>
+        <div class="rec-badges">
+           <span class="badge" style="color:#000">Carb: ${r.carbon_latigos + r.carbon_herbaceas}</span>
+           <span class="badge" style="color:var(--amber)">Esc: ${r.escaldadura_yemas_germinadas + r.escaldadura_lineas_blancas}</span>
+           <span class="badge" style="color:var(--danger)">Roya: ${r.roya_porcentaje}%</span>
+        </div>
+      </div>
+      <button class="del-btn" onclick="eliminarRegistro('${r.id}')"><i class="fa-solid fa-trash-can"></i></button>
+    </div>
+  `).join('');
+}
+
+function actualizarUI() {
+  document.getElementById('tabRecs').innerHTML = `<i class="fa-solid fa-database"></i>Registros (${registros.length})`;
+  document.getElementById('sync-count').innerText = registros.length;
+  document.getElementById('syncServerUrl').textContent = configLocal.server ? buildURL(configLocal.server) : '— Sin configurar —';
+}
+
+function logConsole(msg) {
+  const c = document.getElementById('syncConsole');
+  c.innerHTML = `&rarr; ${msg}<br>` + c.innerHTML;
+}
+
+function guardarConfiguracion() {
+  const srv = document.getElementById('i_server').value.trim();
+  configLocal.server = srv;
+  localStorage.setItem('cr_sanidad_cfg', JSON.stringify(configLocal));
+  mostrarToast("✔ Configuración guardada");
+  actualizarUI();
+}
+
+// --- CONEXION Y SYNC ---
+async function probarConexion() {
+  if(!configLocal.server) {
+    mostrarToast("Configura el servidor primero");
+    return;
+  }
+  const btn = document.getElementById('btnTest');
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Probando...`;
+  logConsole("Haciendo ping al servidor...");
+  
+  const url = buildURL(configLocal.server) + '/api/sanidad/sync'; // We use the same endpoint but maybe a OPTIONS or just let it fail gracefully if GET is not supported, or ideally point to a /api/ping if the server has it. Let's just do a basic GET to the base URL to check if it's reachable.
+  const pingUrl = buildURL(configLocal.server) + '/__swagger__/'; 
+  
+  try {
+    const res = await fetch(pingUrl, { mode: 'no-cors' }); // no-cors just checks if it's there
+    logConsole(`<span style="color:var(--green)">Conexión exitosa. El servidor responde.</span>`);
+  } catch(e) {
+    logConsole(`<span style="color:var(--red)">Fallo de conexión. Revise URL o Internet.</span>`);
+  } finally {
+    btn.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> Probar Conexión`;
+  }
+}
+
+async function sincronizarAPI() {
+  if(!configLocal.server) {
+    mostrarToast("Configura el servidor ngrok primero en la pestaña Config");
+    return;
+  }
+  
+  if(registros.length === 0) {
+    mostrarToast("No hay registros para enviar");
+    return;
+  }
+  
+  if(!navigator.onLine) {
+    mostrarToast("No hay conexión a Internet");
+    return;
+  }
+
+  const btn = document.getElementById('btnSync');
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Subiendo...`;
+  logConsole(`Iniciando envío de ${registros.length} registros...`);
+
+  const url = buildURL(configLocal.server) + '/api/sanidad/sync';
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer SugarCane2026Secure'
+      },
+      body: JSON.stringify(registros)
+    });
+    
+    const data = await res.json();
+    if(res.ok && data.status === "ok") {
+      const enviados = registros.length;
+      registros = [];
+      localStorage.setItem('cr_sanidad_recs', JSON.stringify([]));
+      
+      // Update count of done
+      let done = parseInt(document.getElementById('sync-done').innerText) || 0;
+      document.getElementById('sync-done').innerText = done + enviados;
+      
+      actualizarUI();
+      renderRegistros();
+      logConsole(`<span style="color:var(--green)">Sincronización completa: ${enviados} subidos.</span>`);
+      mostrarToast("¡Sincronización exitosa!");
+    } else {
+      logConsole(`<span style="color:var(--red)">Error API: ${data.message || "Fallo"}</span>`);
+      alert("Error del servidor: " + (data.message || "Fallo desconocido"));
+    }
+  } catch(e) {
+    logConsole(`<span style="color:var(--red)">Error de Red: ${e.message}</span>`);
+    alert("Error de red. Asegúrese de que el servidor está encendido.\nDetalle: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Sincronizar con la Oficina`;
+  }
+}
+
+// --- UTILIDADES ---
+function chequearConexion() {
+  const pill = document.getElementById('connPill');
+  const txt = document.getElementById('connText');
+  if(navigator.onLine) {
+    pill.className = "conn-pill online";
+    txt.innerText = "Online";
+  } else {
+    pill.className = "conn-pill offline";
+    txt.innerText = "Offline";
+  }
+}
+
+let toastTimeout;
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.innerText = msg;
+  t.style.opacity = '1';
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => { t.style.opacity = '0'; }, 3000);
+}
+</script>
+</body>
+</html>

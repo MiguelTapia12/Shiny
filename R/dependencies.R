@@ -18,7 +18,15 @@ load_dependencies <- function() {
     "RSQLite",
     "DBI",
     "stringr",
-    "digest"
+    "digest",
+    "bslib",
+    "shinycssloaders",
+    "shinyjs",
+    "shinyWidgets",
+    "rmarkdown",
+    "knitr",
+    "lme4",
+    "emmeans"
   )
 
   missing <- pkgs[!vapply(pkgs, requireNamespace, logical(1), quietly = TRUE)]

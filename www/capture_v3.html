@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CR Breeding — Captura de Campo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{font-size:16px;height:100%}
+
+/* TEMA CLARO - ALTA VISIBILIDAD BAJO EL SOL Y 100% OFFLINE (SIN DEPENDENCIAS EXTERNAS) */
+body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f4f7f5;color:#1e2d24;min-height:100%;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative}
+
+/* NAV */
+.top-bar{background:#ffffff;border-bottom:2px solid #d1e2d8;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 4px rgba(0,0,0,0.02)}
+.top-bar-title{font-size:16px;font-weight:700;color:#0b3c22;letter-spacing:-.2px}
+.top-bar-sub{font-size:11px;color:#059669;margin-top:1px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.conn-badge{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 10px;border-radius:20px;border:1px solid}
+.conn-badge.online{color:#15803d;border-color:#bbf7d0;background:#dcfce7}
+.conn-badge.offline{color:#b91c1c;border-color:#fecaca;background:#fee2e2}
+.conn-dot{width:8px;height:8px;border-radius:50%}
+.conn-badge.online .conn-dot{background:#22c55e;box-shadow:0 0 6px #22c55e88}
+.conn-badge.offline .conn-dot{background:#ef4444}
+
+/* STEPPER */
+.stepper{display:flex;background:#ffffff;border-bottom:2px solid #d1e2d8;padding:0 8px}
+.step-tab{flex:1;text-align:center;padding:12px 4px;font-size:11px;font-weight:700;color:#556b5c;border-bottom:3px solid transparent;cursor:pointer;transition:all .2s;white-space:nowrap}
+.step-tab.active{color:#059669;border-bottom-color:#059669}
+.step-tab span.tab-icon{display:block;font-size:18px;margin-bottom:4px}
+
+/* CONTENT */
+.view{display:none;padding:16px;flex:1}
+.view.active{display:block}
+
+/* CONTEXT HEADER */
+.ctx-card{background:#ffffff;border:1px solid #d1e2d8;border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,0.03)}
+.ctx-info{font-size:11px;color:#556b5c;font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.ctx-value{font-size:14px;font-weight:700;color:#0b3c22;margin-top:2px}
+.ctx-edit-btn{background:#f0fdf4;border:1px solid #bbf7d0;color:#059669;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:700;transition:all .15s}
+.ctx-edit-btn:active{background:#dcfce7;transform:scale(0.95)}
+
+/* FORM */
+.section-label{font-size:11px;font-weight:700;color:#059669;text-transform:uppercase;letter-spacing:1px;margin:16px 0 8px;border-left:3px solid #059669;padding-left:6px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:600;color:#354c3e;margin-bottom:6px}
+.row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+input,select{width:100%;background:#ffffff;border:2px solid #cbdcd0;border-radius:10px;padding:11px 12px;font-size:15px;font-weight:600;color:#111827;font-family:inherit;appearance:none;-webkit-appearance:none;outline:none;transition:border-color .2s, box-shadow .2s}
+input:focus,select:focus{border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,0.1)}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+select option{background:#ffffff;color:#111827}
+
+/* SELECT CONTAINER FOR CUSTOM ARROW */
+.select-wrapper{position:relative}
+.select-wrapper::after{content:'▼';position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:10px;color:#556b5c;pointer-events:none}
+
+/* ACCION PILLS */
+.accion-group{display:flex;gap:8px}
+.accion-pill{flex:1;padding:12px 4px;border-radius:10px;border:2px solid #cbdcd0;background:#ffffff;color:#4b5563;font-size:13px;font-weight:700;text-align:center;cursor:pointer;transition:all .2s;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px}
+.accion-pill.S.selected{background:#dcfce7;border-color:#166534;color:#166534}
+.accion-pill.T.selected{background:#fef3c7;border-color:#b45309;color:#b45309}
+.accion-pill.R.selected{background:#fee2e2;border-color:#991b1b;color:#991b1b}
+.accion-pill:not(.selected):hover{border-color:#059669;color:#0b3c22}
+
+/* BRIX SLIDER */
+.brix-wrapper{position:relative}
+.brix-display{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-weight:700;color:#059669;font-size:14px;pointer-events:none}
+input[type=range]{padding:0;height:44px;background:transparent;border:none;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:6px;background:#e2ede5;border-radius:3px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#059669;margin-top:-9px;box-shadow:0 0 0 4px #ffffff, 0 2px 4px rgba(0,0,0,0.15)}
+input[type=range]:focus{border:none;box-shadow:none}
+
+/* VIGOR DOTS */
+.vigor-grid{display:flex;gap:6px}
+.vigor-btn{flex:1;height:42px;border-radius:8px;border:2px solid #cbdcd0;background:#ffffff;color:#4b5563;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit}
+.vigor-btn.selected{background:#e6fcf0;border-color:#059669;color:#059669}
+
+/* SAVE BTN */
+.save-btn{width:100%;background:#059669;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;transition:background .2s, transform .1s;margin-top:12px;box-shadow:0 4px 6px rgba(5,150,105,0.15)}
+.save-btn:hover{background:#047857}
+.save-btn:active{background:#065f46;transform:scale(.99)}
+
+/* RECORDS LIST */
+.counter-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.counter-badge{font-size:12px;background:#dcfce7;border:1px solid #bbf7d0;color:#15803d;padding:5px 12px;border-radius:20px;font-weight:700}
+.clear-btn{background:none;border:none;font-size:12px;color:#dc2626;cursor:pointer;font-family:inherit;font-weight:700;padding:4px 8px;display:flex;align-items:center;gap:4px}
+.record-card{background:#ffffff;border:1px solid #d1e2d8;border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;box-shadow:0 2px 4px rgba(0,0,0,0.01)}
+.record-main{flex:1;min-width:0}
+.record-cruce{font-size:14px;font-weight:700;color:#0b3c22}
+.record-meta{font-size:12px;color:#556b5c;margin-top:4px;font-weight:600}
+.record-accion{font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;flex-shrink:0;margin-top:2px;letter-spacing:0.5px}
+.ac-S{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.ac-T{background:#fef3c7;color:#b45309;border:1px solid #fde68a}
+.ac-R{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+.del-btn{background:none;border:none;color:#9ca3af;font-size:16px;cursor:pointer;padding:4px;flex-shrink:0;transition:color .2s}
+.del-btn:hover{color:#dc2626}
+.empty-state{text-align:center;padding:48px 24px;color:#9ca3af}
+.empty-state span.empty-icon{font-size:40px;display:block;margin-bottom:12px;color:#d1d5db}
+.empty-state p{font-size:14px;font-weight:600}
+
+/* SYNC VIEW */
+.ip-field{margin-bottom:16px}
+.ip-field label{display:block;font-size:12px;color:#354c3e;margin-bottom:6px;font-weight:600}
+.sync-btn{width:100%;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;border:none;transition:all .2s;margin-bottom:10px}
+.sync-btn-primary{background:#059669;color:#fff;box-shadow:0 4px 6px rgba(5,150,105,0.1)}
+.sync-btn-primary:hover{background:#047857}
+.sync-btn-primary:disabled{background:#e5e7eb;color:#9ca3af;cursor:not-allowed;box-shadow:none}
+.sync-btn-secondary{background:#ffffff;border:2px solid #cbdcd0;color:#1e2d24}
+.sync-btn-secondary:hover{background:#f4f7f5}
+.sync-log{background:#ffffff;border:2px solid #cbdcd0;border-radius:10px;padding:12px;margin-top:16px;min-height:60px;max-height:180px;overflow-y:auto;box-shadow:inset 0 1px 3px rgba(0,0,0,0.02)}
+.log-line{font-size:12px;font-family:monospace;color:#556b5c;line-height:1.8;font-weight:600}
+.log-line.ok{color:#166534;font-weight:700}
+.log-line.err{color:#dc2626;font-weight:700}
+.log-line.info{color:#b45309;font-weight:700}
+
+/* SETTINGS VIEW */
+.setting-row{background:#ffffff;border:1px solid #d1e2d8;border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:0 2px 4px rgba(0,0,0,0.01)}
+.setting-row label{font-size:13px;color:#0b3c22;font-weight:700;display:block;margin-bottom:8px}
+.setting-note{font-size:11px;color:#556b5c;margin-top:6px;font-weight:600}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.stat-box{background:#ffffff;border:1px solid #d1e2d8;border-radius:10px;padding:14px 12px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.01)}
+.stat-num{font-size:24px;font-weight:700;color:#059669}
+.stat-label{font-size:11px;color:#556b5c;margin-top:2px;font-weight:600}
+.about-text{font-size:12px;color:#788f80;line-height:1.7;text-align:center;margin-top:24px;font-weight:600}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);opacity:0;background:#ffffff;border:2px solid #059669;border-radius:100px;padding:12px 24px;font-size:14px;font-weight:700;color:#059669;display:flex;align-items:center;gap:8px;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:1000;white-space:nowrap;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,0.12)}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.err{border-color:#dc2626;color:#dc2626}
+</style>
+<script src="i18n.js"></script>
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <div class="top-bar-title">CR Breeding</div>
+    <div class="top-bar-sub" data-i18n="nav_capture">Captura de Campo</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <button onclick="toggleLang()" style="background:none;border:1px solid #bbf7d0;border-radius:16px;padding:3px 10px;font-size:11px;font-weight:700;color:#059669;cursor:pointer" id="lang_toggle_label">🇪🇸 ES</button>
+    <div id="connBadge" class="conn-badge offline">
+      <div class="conn-dot"></div>
+      <span id="connText" data-i18n="status_offline">Sin red</span>
+    </div>
+  </div>
+</div>
+<script>function toggleLang(){var c=i18n.lang||'es';i18n.setLang(c==='es'?'en':'es');}</script>
+
+<div class="stepper">
+  <div class="step-tab active" onclick="switchView('capture')" id="tab-capture">
+    <span class="tab-icon">🌱</span>Captura
+  </div>
+  <div class="step-tab" onclick="switchView('records')" id="tab-records">
+    <span class="tab-icon">📋</span>Registros
+  </div>
+  <div class="step-tab" onclick="switchView('sync')" id="tab-sync">
+    <span class="tab-icon">🔄</span>Sync
+  </div>
+  <div class="step-tab" onclick="switchView('settings')" id="tab-settings">
+    <span class="tab-icon">⚙️</span>Config
+  </div>
+</div>
+
+<!-- ── VISTA: CAPTURA ── -->
+<div class="view active" id="view-capture">
+  <div class="ctx-card">
+    <div>
+      <div class="ctx-info" data-i18n="capture_active_context">Contexto activo <span id="gpsStatus" style="font-size:10px; color:#d97706; margin-left:8px;">📡 GPS</span></div>
+      <div class="ctx-value" id="ctxSummary">—</div>
+    </div>
+    <button class="ctx-edit-btn" onclick="switchView('settings')">✏️ Editar</button>
+  </div>
+
+  <div class="section-label">Cruce y Clon</div>
+  <div class="row-2">
+    <div class="field">
+      <label data-i18n="capture_cross">Cruce</label>
+      <input type="text" id="cruce" placeholder="Ej: 550" autocomplete="off" inputmode="text">
+    </div>
+    <div class="field">
+      <label data-i18n="capture_selection_num">Selección (Clon)</label>
+      <input type="number" id="numSel" placeholder="0" value="" inputmode="numeric">
+    </div>
+  </div>
+
+  <div class="section-label">Métricas de Campo</div>
+  <div class="field">
+    <label>Brix — <span id="brixLabel" style="color:#059669;font-weight:700">—</span>%</label>
+    <div class="brix-wrapper">
+      <input type="range" id="brixSlider" min="10" max="30" step="0.5" value="20" oninput="updateBrix(this.value)">
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:#556b5c;margin-top:3px;padding:0 2px;font-weight:700">
+      <span>10%</span><span>30%</span>
+    </div>
+  </div>
+
+  <div class="field">
+    <label data-i18n="axis_vigor">Vigor / Agronómico</label>
+    <div class="vigor-grid" id="vigorGroup">
+      <button class="vigor-btn" onclick="selectVigor(3)">3</button>
+      <button class="vigor-btn" onclick="selectVigor(5)">5</button>
+      <button class="vigor-btn" onclick="selectVigor(6)">6</button>
+      <button class="vigor-btn selected" onclick="selectVigor(7)">7</button>
+      <button class="vigor-btn" onclick="selectVigor(8)">8</button>
+      <button class="vigor-btn" onclick="selectVigor(9)">9</button>
+    </div>
+  </div>
+
+  <div class="field" style="margin-top:4px">
+    <label data-i18n="lbl_decision">Decisión</label>
+    <div class="accion-group">
+      <button class="accion-pill R" onclick="selectAccion('R')">❌ <span data-i18n="decision_reject">Rechazar</span></button>
+      <button class="accion-pill S selected" onclick="selectAccion('S')">✅ <span data-i18n="decision_select">Seleccionar</span></button>
+      <button class="accion-pill T" onclick="selectAccion('T')">⭐ <span data-i18n="decision_witness">Testigo</span></button>
+    </div>
+  </div>
+
+  <button class="save-btn" onclick="guardarClon()">
+    ➕ <span data-i18n="capture_save_clone">Guardar Clon</span>
+  </button>
+
+  <div style="text-align:center;margin-top:12px;font-size:12px;color:#556b5c;font-weight:700">
+    <span id="captureCount">0</span> clon(es) en memoria local
+  </div>
+</div>
+
+<!-- ── VISTA: REGISTROS ── -->
+<div class="view" id="view-records">
+  <div class="counter-row">
+    <span class="counter-badge">📦 <span id="recCount">0</span> registros</span>
+    <button class="clear-btn" onclick="confirmClear()">🗑️ Borrar todo</button>
+  </div>
+  <div id="recordsList"></div>
+</div>
+
+<!-- ── VISTA: SYNC ── -->
+<div class="view" id="view-sync">
+  <div class="stat-grid">
+    <div class="stat-box">
+      <div class="stat-num" id="syncCount">0</div>
+      <div class="stat-label">pendientes</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="syncedTotal" style="color:#b45309">0</div>
+      <div class="stat-label">sincronizados</div>
+    </div>
+  </div>
+
+  <div class="ctx-card" style="margin-bottom:14px">
+    <div style="overflow:hidden">
+      <div class="ctx-info">Servidor configurado</div>
+      <div class="ctx-value" id="syncServerDisplay" style="font-size:12px;word-break:break-all">— Sin configurar —</div>
+    </div>
+    <button class="ctx-edit-btn" onclick="switchView('settings')">✏️ Editar</button>
+  </div>
+
+  <button class="sync-btn sync-btn-primary" id="syncBtn" onclick="syncData()">
+    🔄 <span data-i18n="sync_sync_office">Sincronizar con la Oficina</span>
+  </button>
+  <button class="sync-btn sync-btn-secondary" onclick="pingServer()">
+    📡 <span data-i18n="sync_test_conn">Probar Conexión</span>
+  </button>
+
+  <div class="sync-log" id="syncLog">
+    <div class="log-line">→ Esperando acción...</div>
+  </div>
+</div>
+
+<!-- ── VISTA: CONFIG ── -->
+<div class="view" id="view-settings">
+  <div class="section-label">Contexto de Campaña</div>
+
+  <div class="setting-row">
+    <label data-i18n="cfg_selection_stage">Etapa de Selección</label>
+    <div class="select-wrapper">
+      <select id="cfgEtapa">
+        <option value="ST1" data-i18n="stage_st1">ST1 — Evaluación Primaria</option>
+        <option value="ST2" data-i18n="stage_st2">ST2 — Evaluación Secundaria</option>
+        <option value="ST3" data-i18n="stage_st3">ST3 — Ensayos Avanzados</option>
+        <option value="ST4" data-i18n="stage_st4">ST4 — Pre-comercial</option>
+        <option value="ST5" data-i18n="stage_st5">ST5 — Comercial</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="setting-row">
+    <label data-i18n="cfg_target_soil">Suelo Objetivo</label>
+    <div class="select-wrapper">
+      <select id="cfgSuelo">
+        <option value="BUENO" data-i18n="soil_good">Bueno</option>
+        <option value="ROCOSO" data-i18n="soil_rocky">Rocoso</option>
+        <option value="MAL_DRENADO" data-i18n="soil_poor_drain">Mal Drenado</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row-2" style="gap:12px">
+    <div class="setting-row" style="margin-bottom:0">
+      <label>Año Evaluación</label>
+      <input type="number" id="cfgAnioSel" value="2026" inputmode="numeric">
+    </div>
+    <div class="setting-row" style="margin-bottom:0">
+      <label>Año de Cruce</label>
+      <input type="number" id="cfgAnioCruce" value="2023" inputmode="numeric">
+    </div>
+  </div>
+  <div style="margin-top:12px"></div>
+  <div class="setting-row">
+    <label>Programa (Editable)</label>
+    <input type="text" id="cfgPrograma" value="CR" placeholder="Ej: CR, BR" style="text-transform: uppercase;">
+    <div class="setting-note">Escribe libremente el prefijo del programa (ej. CR, BR, EVF, etc.).</div>
+  </div>
+
+  <div class="setting-row">
+    <label>Evaluador / Técnico</label>
+    <input type="text" id="cfgEvaluador" value="" placeholder="Ej: Juan Perez" autocomplete="off">
+  </div>
+
+  <div class="setting-row">
+    <label data-i18n="cfg_server_url">URL del Servidor (ngrok o IP local)</label>
+    <input type="text" id="serverIP" placeholder="xxxx.ngrok-free.app o 192.168.x.x:8000" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <div class="setting-note">Pega aquí la URL de ngrok (sin https://) o la IP local Wi-Fi. Se actualiza cada vez que reinicias ngrok.</div>
+  </div>
+
+  <button class="sync-btn sync-btn-primary" style="margin-top:12px" onclick="saveSettings()">
+    💾 <span data-i18n="cfg_save_config">Guardar Configuración</span>
+  </button>
+
+  <div class="about-text">
+    CR Breeding Field Capture v3.0<br>
+    Central Romana Corp. · Programa de Mejoramiento<br>
+    Los datos se almacenan localmente en el dispositivo<br>hasta que sean sincronizados por Wi-Fi.
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✅</span>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+let db = JSON.parse(localStorage.getItem('cr_db') || '[]');
+let syncedTotal = parseInt(localStorage.getItem('cr_synced') || '0');
+let selectedVigor = 7;
+let selectedAccion = 'S';
+let currentView = 'capture';
+
+function loadSettings() {
+  const s = JSON.parse(localStorage.getItem('cr_settings') || '{}');
+  if (s.etapa) document.getElementById('cfgEtapa').value = s.etapa;
+  if (s.suelo) document.getElementById('cfgSuelo').value = s.suelo;
+  if (s.anioSel) document.getElementById('cfgAnioSel').value = s.anioSel;
+  if (s.anioCruce) document.getElementById('cfgAnioCruce').value = s.anioCruce;
+  if (s.programa) document.getElementById('cfgPrograma').value = s.programa;
+  if (s.evaluador) document.getElementById('cfgEvaluador').value = s.evaluador;
+  if (s.serverIP) document.getElementById('serverIP').value = s.serverIP;
+  updateCtxSummary();
+}
+
+function saveSettings() {
+  const progVal = document.getElementById('cfgPrograma').value.trim().toUpperCase();
+  const s = {
+    etapa: document.getElementById('cfgEtapa').value,
+    suelo: document.getElementById('cfgSuelo').value,
+    anioSel: document.getElementById('cfgAnioSel').value,
+    anioCruce: document.getElementById('cfgAnioCruce').value,
+    programa: progVal,
+    evaluador: document.getElementById('cfgEvaluador').value.trim(),
+    serverIP: document.getElementById('serverIP').value.trim()
+  };
+  localStorage.setItem('cr_settings', JSON.stringify(s));
+  updateCtxSummary();
+  toast('Configuración guardada');
+  setTimeout(() => switchView('capture'), 600);
+}
+
+function getSettings() {
+  return JSON.parse(localStorage.getItem('cr_settings') || '{}');
+}
+
+function updateCtxSummary() {
+  const s = getSettings();
+  const etapa = s.etapa || 'ST1';
+  const suelo = s.suelo || 'BUENO';
+  const prog = s.programa || 'CR';
+  const anio = s.anioSel || '2026';
+  document.getElementById('ctxSummary').textContent = `${etapa} · ${suelo} · ${prog} · ${anio}`;
+}
+
+function switchView(v) {
+  document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.step-tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  document.getElementById('tab-' + v).classList.add('active');
+  currentView = v;
+  if (v === 'records') renderRecords();
+  if (v === 'sync') updateSyncView();
+}
+
+function updateBrix(val) {
+  document.getElementById('brixLabel').textContent = parseFloat(val).toFixed(1);
+}
+
+function selectVigor(val) {
+  selectedVigor = val;
+  document.querySelectorAll('.vigor-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.textContent) === val);
+  });
+}
+
+function selectAccion(val) {
+  selectedAccion = val;
+  document.querySelectorAll('.accion-pill').forEach(b => {
+    b.classList.remove('selected');
+    if (b.classList.contains(val)) b.classList.add('selected');
+  });
+}
+
+function guardarClon() {
+  const cruce = document.getElementById('cruce').value.trim();
+  const numSel = parseInt(document.getElementById('numSel').value) || 0;
+  const brix = parseFloat(document.getElementById('brixSlider').value);
+  if (!cruce) { toast('Introduce el Cruce antes de guardar', true); return; }
+  const s = getSettings();
+  const record = {
+    id: Date.now(),
+    etapa: s.etapa || 'ST1',
+    suelo: s.suelo || 'BUENO',
+    anio_seleccion: parseInt(s.anioSel) || 2026,
+    anio_cruce: parseInt(s.anioCruce) || 2023,
+    programa: s.programa || 'CR',
+    cruce, num_sel: numSel, brix, vigor: selectedVigor, accion: selectedAccion,
+    evaluador: s.evaluador || 'Tablet',
+    latitud: currentLat,
+    longitud: currentLon,
+    ts: new Date().toISOString()
+  };
+  db.push(record);
+  localStorage.setItem('cr_db', JSON.stringify(db));
+  updateCaptureCount();
+  if (navigator.vibrate) navigator.vibrate([30, 10, 30]);
+  toast('Clon guardado · ' + cruce);
+  
+  // AJUSTE: El cruce no se borra al guardar — solo el número de selección, brix y vigor se resetean
+  document.getElementById('numSel').value = '';
+  document.getElementById('brixSlider').value = 20;
+  document.getElementById('brixLabel').textContent = '20.0';
+  selectVigor(7); // Vigor por defecto es 7
+  selectAccion('S');
+  document.getElementById('numSel').focus(); // Foco automático en el clon para agilidad extrema
+}
+
+function updateCaptureCount() {
+  document.getElementById('captureCount').textContent = db.length;
+}
+
+function renderRecords() {
+  const list = document.getElementById('recordsList');
+  document.getElementById('recCount').textContent = db.length;
+  if (db.length === 0) {
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">🌱</span><p>Sin clones capturados aún.<br>Ve a Captura para comenzar.</p></div>`;
+    return;
+  }
+  list.innerHTML = [...db].reverse().map(r => `
+    <div class="record-card">
+      <div class="record-main">
+        <div class="record-cruce">${r.programa} · Cruce ${r.cruce} <span style="font-size:12px;color:#059669;font-weight:700">Sel.${r.num_sel}</span></div>
+        <div class="record-meta">Brix: <b style="color:#0b3c22">${r.brix.toFixed(1)}%</b> · Vigor: <b style="color:#0b3c22">${r.vigor}</b> · ${r.etapa} · ${r.suelo}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        <span class="record-accion ac-${r.accion}">${r.accion === 'S' ? '✓ SEL' : r.accion === 'T' ? '◈ TEST' : '✗ REJ'}</span>
+        <button class="del-btn" onclick="deleteRecord(${r.id})" aria-label="Eliminar">❌</button>
+      </div>
+    </div>`).join('');
+}
+
+function deleteRecord(id) {
+  db = db.filter(r => r.id !== id);
+  localStorage.setItem('cr_db', JSON.stringify(db));
+  updateCaptureCount();
+  renderRecords();
+}
+
+function confirmClear() {
+  if (db.length === 0) { toast('No hay registros que borrar', true); return; }
+  if (confirm(`¿Borrar los ${db.length} registros de la memoria?\nEsta acción no se puede deshacer.`)) {
+    db = [];
+    localStorage.setItem('cr_db', JSON.stringify(db));
+    updateCaptureCount();
+    renderRecords();
+    toast('Memoria limpiada');
+  }
+}
+
+function updateSyncView() {
+  document.getElementById('syncCount').textContent = db.length;
+  document.getElementById('syncedTotal').textContent = syncedTotal;
+  const s = getSettings();
+  const disp = document.getElementById('syncServerDisplay');
+  if (disp) disp.textContent = s.serverIP ? s.serverIP : '— Sin configurar —';
+}
+
+function addLog(msg, cls = '') {
+  const log = document.getElementById('syncLog');
+  const div = document.createElement('div');
+  div.className = 'log-line ' + cls;
+  div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function pingServer() {
+  const s = getSettings();
+  const raw = (s.serverIP || '').trim();
+  if (!raw) { toast('Configura el servidor en Config primero', true); return; }
+  const url = raw.startsWith('http') ? raw : (raw.includes('ngrok') ? 'https://' + raw : 'http://' + raw);
+  addLog('Conectando a ' + raw + '...', 'info');
+  try {
+    const r = await fetch(url + '/api/ping', {
+      signal: AbortSignal.timeout(5000),
+      headers: {
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': 'Bearer SugarCane2026Secure'
+      }
+    });
+    if (r.ok) { const d = await r.json(); addLog('✓ ' + d.message, 'ok'); toast('Servidor en línea'); }
+    else { addLog('✗ Servidor respondió con error ' + r.status, 'err'); }
+  } catch(e) {
+    addLog('✗ Sin respuesta: ' + e.message, 'err');
+    toast('No se pudo conectar', true);
+  }
+}
+
+async function syncData() {
+  if (db.length === 0) { toast('No hay registros pendientes', true); return; }
+  const s = getSettings();
+  const raw = (s.serverIP || '').trim();
+  if (!raw) { toast('Configura el servidor en Config primero', true); return; }
+  const url = raw.startsWith('http') ? raw : (raw.includes('ngrok') ? 'https://' + raw : 'http://' + raw);
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true;
+  btn.innerHTML = '🔄 Sincronizando...';
+  addLog('Enviando ' + db.length + ' registro(s) a ' + raw + '...', 'info');
+  try {
+    const r = await fetch(url + '/api/selection/sync', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', 
+        'ngrok-skip-browser-warning': 'true',
+        'Authorization': 'Bearer SugarCane2026Secure'
+      },
+      body: JSON.stringify(db),
+      signal: AbortSignal.timeout(15000)
+    });
+    const d = await r.json();
+    const status = Array.isArray(d.status) ? d.status[0] : d.status;
+    if (r.ok && status === 'ok') {
+      syncedTotal += db.length;
+      localStorage.setItem('cr_synced', syncedTotal);
+      const msg = Array.isArray(d.message) ? d.message[0] : d.message;
+      const count = Array.isArray(d.registros_sincronizados) ? d.registros_sincronizados[0] : d.registros_sincronizados;
+      addLog('✓ ' + msg, 'ok');
+      
+      // Consultar el estado en la BD para el contexto actual
+      const ctxEtp = s.etapa || 'ST1';
+      const ctxSuelo = s.suelo || 'BUENO';
+      const ctxAnio = s.anioSel || '2026';
+      
+      try {
+        const statusRes = await fetch(`${url}/api/field-status?etapa=${ctxEtp}&suelo=${ctxSuelo}&anio=${ctxAnio}`, {
+          headers: {
+            'ngrok-skip-browser-warning': 'true',
+            'Authorization': 'Bearer SugarCane2026Secure'
+          }
+        });
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          addLog(`📊 BD Total [${ctxEtp}·${ctxSuelo}]: ${statusData.n_registros} clones`, 'info');
+        }
+      } catch (err) {
+        // Ignoramos si falla el status, lo principal ya sincronizó
+      }
+      
+      db = []; localStorage.setItem('cr_db', JSON.stringify(db));
+      updateCaptureCount(); updateSyncView();
+      toast(count + ' registros sincronizados');
+    } else { addLog('✗ Error: ' + d.message, 'err'); toast('Error del servidor', true); }
+  } catch(e) {
+    addLog('✗ Error de conexión: ' + e.message, 'err');
+    toast('Sin conexión al servidor', true);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔄 Sincronizar con la Oficina';
+  }
+}
+
+function toast(msg, isErr = false) {
+  const el = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  document.getElementById('toastIcon').textContent = isErr ? '⚠️' : '✅';
+  el.className = 'toast show' + (isErr ? ' err' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toast', 2800);
+}
+
+function checkConn() {
+  const badge = document.getElementById('connBadge');
+  const txt = document.getElementById('connText');
+  if (navigator.onLine) {
+    badge.className = 'conn-badge online';
+    txt.textContent = 'En línea';
+  } else {
+    badge.className = 'conn-badge offline';
+    txt.textContent = 'Sin red';
+  }
+}
+
+window.addEventListener('online', checkConn);
+window.addEventListener('offline', checkConn);
+
+document.getElementById('brixSlider').addEventListener('input', function() {
+  updateBrix(this.value);
+});
+
+// Forzar conversión automática a mayúsculas en tiempo real para el Programa
+document.getElementById('cfgPrograma').addEventListener('input', function() {
+  this.value = this.value.toUpperCase();
+});
+
+loadSettings();
+checkConn();
+updateBrix(20);
+updateCaptureCount();
+
+// GPS Tracking
+let currentLat = null;
+let currentLon = null;
+
+if (navigator.geolocation) {
+  navigator.geolocation.watchPosition(
+    (pos) => {
+      currentLat = pos.coords.latitude;
+      currentLon = pos.coords.longitude;
+      const gpsEl = document.getElementById('gpsStatus');
+      if (gpsEl) { gpsEl.innerHTML = '📍 GPS OK'; gpsEl.style.color = '#16a34a'; }
+    },
+    (err) => {
+      const gpsEl = document.getElementById('gpsStatus');
+      if (gpsEl) { gpsEl.innerHTML = '⚠️ Sin GPS'; gpsEl.style.color = '#dc2626'; }
+    },
+    { enableHighAccuracy: true, maximumAge: 10000 }
+  );
+}
+</script>
+</body>
+</html>
